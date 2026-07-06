@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Live Football Match Stats Tracker</title>
+<meta name="description" content="Aplikasi pencatat statistik pertandingan sepak bola secara langsung, mobile-responsive, siap dipakai di lapangan." />
+<meta name="theme-color" content="#0D1512" />
+
+<!-- ============================================================
+     TAILWIND CSS (CDN build) + custom design tokens
+     ============================================================ -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          // Neutral "matchday night" palette (kept distinct from Tailwind's
+          // built-in `base` font-size keyword by naming it `night`).
+          night:    '#0D1512', // page background
+          panel:    '#131F1A', // section surface
+          panel2:   '#17251F', // card surface
+          hairline: '#24352C', // borders / track backgrounds
+          primary:  '#F5F7F5', // off-white (shared/neutral controls)
+          muted:    '#8FA396', // secondary text
+          // Team accent colors — deliberately far from the generic
+          // terracotta/neon-green AI palette: warm broadcast gold vs. crimson.
+          gold:    { DEFAULT: '#F2A93B', dark: '#B8791F', light: '#FCEDD1' },
+          crimson: { DEFAULT: '#FF3B5C', dark: '#C4203C', light: '#FFD9DF' },
+        },
+        fontFamily: {
+          display: ['Oswald', 'sans-serif'],       // scoreboard / team names
+          sans:    ['Inter', 'sans-serif'],         // UI labels & buttons
+          mono:    ['"Space Mono"', 'monospace'],   // live numeric read-outs
+        },
+      },
+    },
+  };
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+
+<style>
+  /* Respect reduced-motion preferences across every animation/transition */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  html, body { overscroll-behavior-y: contain; } /* reduce accidental pull-to-refresh */
+  button, input { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+
+  /* Match status badge colors */
+  .badge-idle     { color: #8FA396; border-color: #24352C; }
+  .badge-paused   { color: #F2A93B; border-color: #F2A93B55; }
+  .badge-live     { color: #FF3B5C; border-color: #FF3B5C55; }
+  .badge-finished { color: #8FA396; border-color: #24352C; }
+
+  /* Possession buttons: dim until selected, then lift + glow with own color */
+  .poss-btn { opacity: .55; }
+  .poss-active { opacity: 1; transform: scale(1.03); box-shadow: 0 0 0 2px currentColor inset; }
+
+  /* Brief "pulse" feedback whenever a counter changes */
+  @keyframes statPulse { 0% { transform: scale(1); } 35% { transform: scale(1.22); } 100% { transform: scale(1); } }
+  .stat-pulse { animation: statPulse .25s ease-out; }
+
+  /* Thin, dark scrollbars to match the broadcast-panel aesthetic */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #24352C; border-radius: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  /* Landscape hint — only shown on small portrait screens */
+  #rotate-hint { display: none; }
+  @media (max-width: 767px) and (orientation: portrait) {
+    #rotate-hint { display: flex; }
+  }
+</style>
+</head>
+
+<body class="bg-night text-primary font-sans min-h-screen pb-4">
+
+  <!-- ============================================================
+       SVG ICON SPRITE — one set of hand-drawn line icons, reused via
+       <use href="#icon-x">. Keeps the file dependency-free (no icon CDN).
+       ============================================================ -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="icon-ball" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/><path d="M12 7l3.4 2.5-1.3 4H9.9l-1.3-4L12 7z"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/>
+      </symbol>
+      <symbol id="icon-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none"/>
+      </symbol>
+      <symbol id="icon-arrowout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="10" cy="10" r="6"/><path d="M14 14l7 7M21 15v6h-6"/>
+      </symbol>
+      <symbol id="icon-corner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 3v18"/><path d="M5 4h9l-2 3 2 3H5z"/><path d="M3 21h6"/>
+      </symbol>
+      <symbol id="icon-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 21V4"/><path d="M6 5h13l-3 4 3 4H6z"/>
+      </symbol>
+      <symbol id="icon-card" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+        <rect x="5" y="3" width="14" height="18" rx="2.5"/>
+      </symbol>
+      <symbol id="icon-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3l10 18H2L12 3z"/><path d="M12 10v4"/><circle cx="12" cy="17.3" r="0.9" fill="currentColor" stroke="none"/>
+      </symbol>
+      <symbol id="icon-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/>
+      </symbol>
+      <symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/>
+      </symbol>
+      <symbol id="icon-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/>
+      </symbol>
+      <symbol id="icon-play" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M6 4l14 8-14 8V4z"/></symbol>
+      <symbol id="icon-pause" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></symbol>
+      <symbol id="icon-reset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 12a9 9 0 1 1 3 6.7"/><path d="M3 21v-6h6"/>
+      </symbol>
+      <symbol id="icon-finish" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 21V4"/><path d="M6 5h13v9H6z"/><path d="M9 5v9M12 5v4M15 8v6"/>
+      </symbol>
+      <symbol id="icon-dot" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="4.5"/></symbol>
+    </defs>
+  </svg>
+
+  <!-- Portrait rotation hint (mobile only, dismissible) -->
+  <div id="rotate-hint" class="items-center gap-2 bg-gold/10 text-gold text-xs px-3 py-2 border-b border-gold/20">
+    <span aria-hidden="true">↻</span>
+    <span>Putar perangkat ke mode lanskap untuk tampilan yang lebih leluasa.</span>
+    <button id="btn-dismiss-rotate-hint" type="button" class="ml-auto text-gold/70 hover:text-gold px-1" aria-label="Tutup pesan">&times;</button>
+  </div>
+
+  <!-- ============================================================
+       HEADER — status badge, match controls, scoreboard, timer
+       ============================================================ -->
+  <header class="sticky top-0 z-40 bg-panel/95 backdrop-blur border-b border-hairline" style="padding-top:env(safe-area-inset-top)">
+    <div class="max-w-5xl mx-auto px-3 py-2 sm:py-3">
+
+      <div class="flex items-center justify-between mb-2 gap-2">
+        <span id="match-status-badge" class="badge-idle text-[10px] sm:text-xs font-bold tracking-widest px-2.5 py-1 rounded-full border">BELUM MULAI</span>
+        <div class="flex items-center gap-2">
+          <button id="btn-reset-match" type="button"
+            class="flex items-center gap-1 text-[11px] sm:text-xs text-muted hover:text-primary px-2 py-1.5 rounded-md border border-hairline transition active:scale-95"
+            aria-label="Mulai pertandingan baru (hapus semua data)">
+            <svg class="w-3.5 h-3.5"><use href="#icon-reset"></use></svg>
+            <span class="hidden sm:inline">Reset</span>
+          </button>
+          <button id="btn-finish-match" type="button"
+            class="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-night bg-primary hover:brightness-95 px-3 py-1.5 rounded-md transition active:scale-95">
+            <svg class="w-3.5 h-3.5"><use href="#icon-finish"></use></svg>
+            <span>Selesaikan</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 items-center gap-2">
+        <div>
+          <input id="input-teamA-name" maxlength="18" value="Tim A" aria-label="Nama Tim A"
+            class="w-full bg-transparent font-display text-sm sm:text-xl font-semibold text-gold text-center sm:text-left focus:outline-none focus:ring-1 focus:ring-gold rounded px-1" />
+        </div>
+        <div class="flex flex-col items-center">
+          <div class="font-display text-3xl sm:text-5xl font-bold tabular-nums flex items-center gap-2 leading-none">
+            <span id="score-a">0</span><span class="text-muted text-lg sm:text-2xl">:</span><span id="score-b">0</span>
+          </div>
+          <span id="timer-display" class="font-mono text-xs sm:text-base text-muted tabular-nums mt-1">00:00</span>
+        </div>
+        <div>
+          <input id="input-teamB-name" maxlength="18" value="Tim B" aria-label="Nama Tim B"
+            class="w-full bg-transparent font-display text-sm sm:text-xl font-semibold text-crimson text-center sm:text-right focus:outline-none focus:ring-1 focus:ring-crimson rounded px-1" />
+        </div>
+      </div>
+
+      <div class="flex items-center justify-center mt-2">
+        <button id="btn-timer-toggle" type="button"
+          class="flex items-center gap-1.5 text-xs sm:text-sm font-bold px-5 py-2 rounded-lg bg-primary text-night transition active:scale-95">
+          <svg id="timer-toggle-icon" class="w-4 h-4"><use id="timer-toggle-icon-use" href="#icon-play"></use></svg>
+          <span id="timer-toggle-label">Mulai</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto">
+
+    <!-- ============================================================
+         POSSESSION TRACKER
+         ============================================================ -->
+    <section class="px-3 py-3">
+      <h2 class="text-xs sm:text-sm font-bold tracking-widest text-muted uppercase mb-2">Penguasaan Bola</h2>
+
+      <div class="flex h-3 rounded-full overflow-hidden bg-hairline mb-1.5">
+        <div id="poss-bar-a" class="bg-gold transition-all duration-500" style="width:0%"></div>
+        <div id="poss-bar-neutral" class="bg-muted/40 transition-all duration-500" style="width:0%"></div>
+        <div id="poss-bar-b" class="bg-crimson transition-all duration-500" style="width:0%"></div>
+      </div>
+      <div class="flex justify-between text-xs sm:text-sm font-mono mb-3">
+        <span id="poss-label-a" class="text-gold font-bold">0%</span>
+        <span id="poss-label-neutral" class="text-muted">0%</span>
+        <span id="poss-label-b" class="text-crimson font-bold">0%</span>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2">
+        <button id="btn-poss-a" type="button" aria-pressed="false"
+          class="poss-btn flex flex-col items-center gap-1 py-3 rounded-xl border-2 border-gold text-gold font-bold text-[11px] sm:text-sm transition active:scale-95">
+          <svg class="w-5 h-5"><use href="#icon-ball"></use></svg>
+          <span><span class="slot-teamA-name">Tim A</span> Menguasai</span>
+        </button>
+        <button id="btn-poss-neutral" type="button" aria-pressed="true"
+          class="poss-btn flex flex-col items-center gap-1 py-3 rounded-xl border-2 border-hairline text-muted font-bold text-[11px] sm:text-sm transition active:scale-95">
+          <svg class="w-5 h-5"><use href="#icon-dot"></use></svg>
+          <span>Netral</span>
+        </button>
+        <button id="btn-poss-b" type="button" aria-pressed="false"
+          class="poss-btn flex flex-col items-center gap-1 py-3 rounded-xl border-2 border-crimson text-crimson font-bold text-[11px] sm:text-sm transition active:scale-95">
+          <svg class="w-5 h-5"><use href="#icon-ball"></use></svg>
+          <span><span class="slot-teamB-name">Tim B</span> Menguasai</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         REAL-TIME DASHBOARD — diverging comparison bars
+         (the "broadcast graphics" signature element of this UI)
+         ============================================================ -->
+    <section class="px-3 py-3">
+      <h2 class="text-xs sm:text-sm font-bold tracking-widest text-muted uppercase mb-2">Statistik Live</h2>
+      <div class="bg-panel border border-hairline rounded-xl p-3 sm:p-4 space-y-3">
+
+        <div>
+          <div class="flex items-center justify-between text-xs sm:text-sm font-mono mb-1">
+            <span id="cmpval-a-goals" class="text-gold font-bold w-8">0</span>
+            <span class="text-muted uppercase tracking-wide text-[10px] sm:text-xs">Gol</span>
+            <span id="cmpval-b-goals" class="text-crimson font-bold w-8 text-right">0</span>
+          </div>
+          <div class="flex h-1.5 rounded-full overflow-hidden bg-hairline">
+            <div class="flex-1 flex justify-end"><div id="cmpbar-a-goals" class="bg-gold h-full transition-all duration-300" style="width:0%"></div></div>
+            <div class="w-px bg-night"></div>
+            <div class="flex-1 flex justify-start"><div id="cmpbar-b-goals" class="bg-crimson h-full transition-all duration-300" style="width:0%"></div></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between text-xs sm:text-sm font-mono mb-1">
+            <span id="cmpval-a-shotsOn" class="text-gold font-bold w-8">0</span>
+            <span class="text-muted uppercase tracking-wide text-[10px] sm:text-xs">Tembakan Tepat Sasaran</span>
+            <span id="cmpval-b-shotsOn" class="text-crimson font-bold w-8 text-right">0</span>
+          </div>
+          <div class="flex h-1.5 rounded-full overflow-hidden bg-hairline">
+            <div class="flex-1 flex justify-end"><div id="cmpbar-a-shotsOn" class="bg-gold h-full transition-all duration-300" style="width:0%"></div></div>
+            <div class="w-px bg-night"></div>
+            <div class="flex-1 flex justify-start"><div id="cmpbar-b-shotsOn" class="bg-crimson h-full transition-all duration-300" style="width:0%"></div></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between text-xs sm:text-sm font-mono mb-1">
+            <span id="cmpval-a-corners" class="text-gold font-bold w-8">0</span>
+            <span class="text-muted uppercase tracking-wide text-[10px] sm:text-xs">Tendangan Sudut</span>
+            <span id="cmpval-b-corners" class="text-crimson font-bold w-8 text-right">0</span>
+          </div>
+          <div class="flex h-1.5 rounded-full overflow-hidden bg-hairline">
+            <div class="flex-1 flex justify-end"><div id="cmpbar-a-corners" class="bg-gold h-full transition-all duration-300" style="width:0%"></div></div>
+            <div class="w-px bg-night"></div>
+            <div class="flex-1 flex justify-start"><div id="cmpbar-b-corners" class="bg-crimson h-full transition-all duration-300" style="width:0%"></div></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between text-xs sm:text-sm font-mono mb-1">
+            <span id="cmpval-a-fouls" class="text-gold font-bold w-8">0</span>
+            <span class="text-muted uppercase tracking-wide text-[10px] sm:text-xs">Pelanggaran</span>
+            <span id="cmpval-b-fouls" class="text-crimson font-bold w-8 text-right">0</span>
+          </div>
+          <div class="flex h-1.5 rounded-full overflow-hidden bg-hairline">
+            <div class="flex-1 flex justify-end"><div id="cmpbar-a-fouls" class="bg-gold h-full transition-all duration-300" style="width:0%"></div></div>
+            <div class="w-px bg-night"></div>
+            <div class="flex-1 flex justify-start"><div id="cmpbar-b-fouls" class="bg-crimson h-full transition-all duration-300" style="width:0%"></div></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between text-xs sm:text-sm font-mono mb-1">
+            <span id="cmpval-a-possession" class="text-gold font-bold w-10">0%</span>
+            <span class="text-muted uppercase tracking-wide text-[10px] sm:text-xs">Penguasaan Bola</span>
+            <span id="cmpval-b-possession" class="text-crimson font-bold w-10 text-right">0%</span>
+          </div>
+          <div class="flex h-1.5 rounded-full overflow-hidden bg-hairline">
+            <div class="flex-1 flex justify-end"><div id="cmpbar-a-possession" class="bg-gold h-full transition-all duration-300" style="width:0%"></div></div>
+            <div class="w-px bg-night"></div>
+            <div class="flex-1 flex justify-start"><div id="cmpbar-b-possession" class="bg-crimson h-full transition-all duration-300" style="width:0%"></div></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between text-xs sm:text-sm font-mono mb-1">
+            <span id="cmpval-a-passAcc" class="text-gold font-bold w-10">0%</span>
+            <span class="text-muted uppercase tracking-wide text-[10px] sm:text-xs">Akurasi Passing</span>
+            <span id="cmpval-b-passAcc" class="text-crimson font-bold w-10 text-right">0%</span>
+          </div>
+          <div class="flex h-1.5 rounded-full overflow-hidden bg-hairline">
+            <div class="flex-1 flex justify-end"><div id="cmpbar-a-passAcc" class="bg-gold h-full transition-all duration-300" style="width:0%"></div></div>
+            <div class="w-px bg-night"></div>
+            <div class="flex-1 flex justify-start"><div id="cmpbar-b-passAcc" class="bg-crimson h-full transition-all duration-300" style="width:0%"></div></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ============================================================
+         SPLIT-SCREEN INPUT AREA — Tim A (kiri) vs Tim B (kanan)
+         Stat cards are generated by JS from STAT_DEFS/PASS_DEFS so the
+         markup here only needs to provide the containers.
+         ============================================================ -->
+    <section id="main-stats-area" class="px-3 pb-6">
+      <div class="grid grid-cols-2 gap-2 sm:gap-4">
+
+        <div class="bg-panel border-2 border-gold/40 rounded-xl p-2 sm:p-3">
+          <h3 class="slot-teamA-name text-gold font-display font-bold text-sm sm:text-lg uppercase tracking-wide mb-2 text-center truncate">Tim A</h3>
+          <div id="teamA-stats-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+          <h4 class="text-muted text-[10px] sm:text-xs font-bold tracking-widest uppercase mt-3 mb-2 text-center">Akurasi Umpan</h4>
+          <div id="teamA-pass-grid" class="grid grid-cols-2 gap-2"></div>
+        </div>
+
+        <div class="bg-panel border-2 border-crimson/40 rounded-xl p-2 sm:p-3">
+          <h3 class="slot-teamB-name text-crimson font-display font-bold text-sm sm:text-lg uppercase tracking-wide mb-2 text-center truncate">Tim B</h3>
+          <div id="teamB-stats-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+          <h4 class="text-muted text-[10px] sm:text-xs font-bold tracking-widest uppercase mt-3 mb-2 text-center">Akurasi Umpan</h4>
+          <div id="teamB-pass-grid" class="grid grid-cols-2 gap-2"></div>
+        </div>
+
+      </div>
+    </section>
+
+    <footer class="px-3 pb-8 pt-2 text-center text-[10px] sm:text-xs text-muted">
+      Data tersimpan otomatis di perangkat ini — aman dari refresh yang tidak sengaja.
+    </footer>
+  </main>
+
+  <!-- ============================================================
+       FINISH MATCH MODAL — summary + export (JSON / .txt)
+       ============================================================ -->
+  <div id="finish-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm items-center justify-center p-3">
+    <div class="bg-panel border border-hairline rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-display text-lg sm:text-xl font-bold">Ringkasan Pertandingan</h2>
+        <button id="btn-modal-close-x" type="button" class="text-muted hover:text-primary text-2xl leading-none px-1" aria-label="Tutup">&times;</button>
+      </div>
+      <div id="finish-modal-body" class="text-sm"></div>
+      <div class="grid grid-cols-2 gap-2 mt-5">
+        <button id="btn-download-json" type="button" class="flex items-center justify-center gap-2 bg-primary text-night font-bold py-3 rounded-lg active:scale-95 transition text-xs sm:text-sm">Unduh JSON</button>
+        <button id="btn-download-txt" type="button" class="flex items-center justify-center gap-2 bg-primary text-night font-bold py-3 rounded-lg active:scale-95 transition text-xs sm:text-sm">Unduh .txt</button>
+      </div>
+      <div class="grid grid-cols-2 gap-2 mt-2">
+        <button id="btn-modal-newmatch" type="button" class="text-xs sm:text-sm text-muted border border-hairline rounded-lg py-2.5 hover:text-primary transition">Pertandingan Baru</button>
+        <button id="btn-modal-close" type="button" class="text-xs sm:text-sm text-muted border border-hairline rounded-lg py-2.5 hover:text-primary transition">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       APPLICATION LOGIC (vanilla ES6+)
+       Architecture:
+         1. Constants & state model
+         2. Persistence (localStorage)
+         3. Pure helpers (formatting, calculations)
+         4. DOM templates for stat cards
+         5. State mutators (change stat, possession, timer)
+         6. Render functions (each targets specific elements only —
+            no full-page re-render, so listeners never need rebinding)
+         7. Export (JSON / formatted text)
+         8. Event binding & init
+       ============================================================ -->
+  <script>
+  (function () {
+    'use strict';
+
+    // ---------- 1. Constants & state model ----------------------------
+    const STORAGE_KEY = 'liveFootballTrackerV1';
+
+    // Defines every quick counter shown in each team's stat grid.
+    const STAT_DEFS = [
+      { key: 'goals',       label: 'Gol',                    icon: 'icon-ball' },
+      { key: 'shotsOn',     label: 'Tembakan Tepat Sasaran', icon: 'icon-target' },
+      { key: 'shotsOff',    label: 'Tembakan Melenceng',     icon: 'icon-arrowout' },
+      { key: 'corners',     label: 'Tendangan Sudut',        icon: 'icon-corner' },
+      { key: 'offsides',    label: 'Offside',                icon: 'icon-flag' },
+      { key: 'yellowCards', label: 'Kartu Kuning',           icon: 'icon-card', colorClass: 'text-amber-400' },
+      { key: 'redCards',    label: 'Kartu Merah',            icon: 'icon-card', colorClass: 'text-red-500' },
+      { key: 'fouls',       label: 'Pelanggaran',            icon: 'icon-alert' },
+      { key: 'saves',       label: 'Penyelamatan Kiper',     icon: 'icon-shield' },
+    ];
+    // Passing accuracy counters, rendered in their own mini-section.
+    const PASS_DEFS = [
+      { key: 'passSuccess', label: 'Umpan Sukses', icon: 'icon-check' },
+      { key: 'passFail',    label: 'Umpan Gagal',   icon: 'icon-x' },
+    ];
+
+    let state = null;        // current match state (see createDefaultState)
+    let tickInterval = null; // guarded reference to the 1-second match clock
+
+    function emptyStatBlock() {
+      return {
+        goals: 0, shotsOn: 0, shotsOff: 0, corners: 0, offsides: 0,
+        yellowCards: 0, redCards: 0, fouls: 0, saves: 0,
+        passSuccess: 0, passFail: 0,
+      };
+    }
+
+    function createDefaultState() {
+      return {
+        teamAName: 'Tim A',
+        teamBName: 'Tim B',
+        teamA: emptyStatBlock(),
+        teamB: emptyStatBlock(),
+        possession: { A: 0, B: 0, neutral: 0, current: 'neutral' }, // accumulated seconds
+        timer: { elapsed: 0, running: false },
+        matchStartedAt: null,
+        matchFinishedAt: null,
+      };
+    }
+
+    // ---------- 2. Persistence -----------------------------------------
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (err) {
+        console.warn('Tidak dapat menyimpan data ke localStorage.', err);
+      }
+    }
+
+    function loadState() {
+      const base = createDefaultState();
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return base;
+        const saved = JSON.parse(raw);
+        // Defensive merge so older/partial saved data never crashes the app.
+        return {
+          ...base,
+          ...saved,
+          teamA: { ...base.teamA, ...(saved.teamA || {}) },
+          teamB: { ...base.teamB, ...(saved.teamB || {}) },
+          possession: { ...base.possession, ...(saved.possession || {}) },
+          timer: { ...base.timer, ...(saved.timer || {}) },
+        };
+      } catch (err) {
+        console.warn('Data tersimpan rusak, memulai data baru.', err);
+        return base;
+      }
+    }
+
+    // ---------- 3. Pure helpers -----------------------------------------
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (ch) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[ch]));
+    }
+
+    function formatTime(totalSeconds) {
+      const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+      const s = (totalSeconds % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    function passAccuracy(teamKey) {
+      const t = state[teamKey];
+      const total = t.passSuccess + t.passFail;
+      return total === 0 ? 0 : Math.round((t.passSuccess / total) * 100);
+    }
+
+    function possessionPercent() {
+      const { A, B, neutral } = state.possession;
+      const total = A + B + neutral;
+      if (total === 0) return { A: 0, B: 0, neutral: 0 };
+      const aPct = Math.round((A / total) * 100);
+      const bPct = Math.round((B / total) * 100);
+      return { A: aPct, B: bPct, neutral: 100 - aPct - bPct }; // guarantees sum = 100
+    }
+
+    function pulse(el) {
+      if (!el) return;
+      el.classList.remove('stat-pulse');
+      void el.offsetWidth; // force reflow so the animation can restart
+      el.classList.add('stat-pulse');
+    }
+
+    // ---------- 4. DOM templates for stat cards --------------------------
+    function statCardHTML(team, def) {
+      const teamColor = team === 'A' ? 'gold' : 'crimson';
+      const iconColor = def.colorClass || `text-${teamColor}`;
+      const teamName = escapeHtml(team === 'A' ? (state.teamAName || 'Tim A') : (state.teamBName || 'Tim B'));
+      return `
+        <div class="bg-panel2 border border-hairline rounded-xl p-2 sm:p-3 flex flex-col gap-2">
+          <div class="flex items-center gap-1.5 text-[10px] sm:text-xs text-muted uppercase tracking-wide">
+            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 ${iconColor} shrink-0"><use href="#${def.icon}"></use></svg>
+            <span class="truncate">${def.label}</span>
+          </div>
+          <div class="flex items-center justify-between gap-1.5">
+            <button type="button" class="stat-btn w-8 h-8 sm:w-11 sm:h-11 shrink-0 rounded-lg bg-night border border-hairline text-base sm:text-xl font-bold text-muted active:scale-90 transition focus:outline-none focus:ring-2 focus:ring-${teamColor}"
+              data-team="${team}" data-stat="${def.key}" data-delta="-1"
+              aria-label="Kurangi ${def.label} untuk ${teamName}">&minus;</button>
+            <span id="stat-${team}-${def.key}" class="font-mono text-xl sm:text-3xl font-bold tabular-nums">0</span>
+            <button type="button" class="stat-btn w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-lg bg-${teamColor} text-sm sm:text-lg font-black text-night active:scale-90 transition focus:outline-none focus:ring-2 focus:ring-${teamColor}"
+              data-team="${team}" data-stat="${def.key}" data-delta="1"
+              aria-label="Tambah ${def.label} untuk ${teamName}">+</button>
+          </div>
+        </div>`;
+    }
+
+    function passAccuracyCardHTML(team) {
+      return `
+        <div class="bg-panel2 border border-hairline rounded-xl p-2 sm:p-3 flex flex-col items-center justify-center gap-1 col-span-2">
+          <div class="text-[10px] sm:text-xs text-muted uppercase tracking-wide">Akurasi Passing</div>
+          <div id="passacc-${team}" class="font-mono text-2xl sm:text-3xl font-bold">0%</div>
+        </div>`;
+    }
+
+    function buildStatGrids() {
+      document.getElementById('teamA-stats-grid').innerHTML = STAT_DEFS.map((d) => statCardHTML('A', d)).join('');
+      document.getElementById('teamB-stats-grid').innerHTML = STAT_DEFS.map((d) => statCardHTML('B', d)).join('');
+      document.getElementById('teamA-pass-grid').innerHTML = PASS_DEFS.map((d) => statCardHTML('A', d)).join('') + passAccuracyCardHTML('A');
+      document.getElementById('teamB-pass-grid').innerHTML = PASS_DEFS.map((d) => statCardHTML('B', d)).join('') + passAccuracyCardHTML('B');
+    }
+
+    // ---------- 5. State mutators ----------------------------------------
+    function changeStat(teamKey, statKey, delta) {
+      const t = state[teamKey];
+      if (!t || !(statKey in t)) return; // guard against malformed data-attrs
+      t[statKey] = Math.max(0, (t[statKey] || 0) + delta); // never negative
+      saveState();
+
+      const letter = teamKey === 'teamA' ? 'A' : 'B';
+      const el = document.getElementById(`stat-${letter}-${statKey}`);
+      if (el) { el.textContent = t[statKey]; pulse(el); }
+
+      if (statKey === 'goals') updateScoreboard();
+      if (statKey === 'passSuccess' || statKey === 'passFail') updatePassAccuracyDisplay(teamKey);
+      renderDashboard();
+    }
+
+    function setPossession(who) {
+      state.possession.current = who; // 'A' | 'B' | 'neutral'
+      saveState();
+      renderPossessionButtons();
+    }
+
+    function tick() {
+      state.timer.elapsed += 1;
+      const cur = state.possession.current;
+      if (cur === 'A') state.possession.A += 1;
+      else if (cur === 'B') state.possession.B += 1;
+      else state.possession.neutral += 1;
+      renderTimerDisplay();
+      renderPossessionBar();
+      renderDashboard();
+      saveState();
+    }
+
+    function startTimer() {
+      if (state.timer.running) return; // guard: never double-start
+      state.timer.running = true;
+      if (!state.matchStartedAt) state.matchStartedAt = Date.now();
+      if (tickInterval) clearInterval(tickInterval);
+      tickInterval = setInterval(tick, 1000);
+      saveState();
+      renderStatusBadge();
+      renderTimerToggleButton();
+    }
+
+    function pauseTimer() {
+      if (!state.timer.running) return; // guard: nothing to pause
+      state.timer.running = false;
+      if (tickInterval) { clearInterval(tickInterval); tickInterval = null; }
+      saveState();
+      renderStatusBadge();
+      renderTimerToggleButton();
+    }
+
+    function toggleTimer() {
+      state.timer.running ? pauseTimer() : startTimer();
+    }
+
+    // Re-attaches the interval after a page reload if the match was live.
+    function resumeTimerIfNeeded() {
+      if (state.timer.running) {
+        if (tickInterval) clearInterval(tickInterval);
+        tickInterval = setInterval(tick, 1000);
+      }
+    }
+
+    function resetMatch() {
+      const ok = confirm('Mulai pertandingan baru? Semua statistik saat ini akan dihapus permanen dan tidak bisa dikembalikan.');
+      if (!ok) return;
+      pauseTimer();
+      try { localStorage.removeItem(STORAGE_KEY); } catch (err) { /* ignore */ }
+      state = createDefaultState();
+      buildStatGrids();
+      renderAll();
+      closeFinishModal();
+    }
+
+    function finishMatch() {
+      const ok = confirm('Selesaikan pertandingan sekarang? Timer akan dihentikan dan ringkasan akhir akan dibuat.');
+      if (!ok) return;
+      pauseTimer();
+      state.matchFinishedAt = Date.now();
+      saveState();
+      renderStatusBadge();
+      openFinishModal();
+    }
+
+    // ---------- 6. Render functions ---------------------------------------
+    function updateScoreboard() {
+      document.getElementById('score-a').textContent = state.teamA.goals;
+      document.getElementById('score-b').textContent = state.teamB.goals;
+    }
+
+    function updatePassAccuracyDisplay(teamKey) {
+      const letter = teamKey === 'teamA' ? 'A' : 'B';
+      const el = document.getElementById(`passacc-${letter}`);
+      if (el) el.textContent = `${passAccuracy(teamKey)}%`;
+    }
+
+    function updateCompareRow(key, aVal, bVal, opts = {}) {
+      const isPercent = !!opts.isPercent;
+      const maxVal = isPercent ? 100 : Math.max(aVal, bVal, 1);
+      const aPct = Math.min(100, (aVal / maxVal) * 100);
+      const bPct = Math.min(100, (bVal / maxVal) * 100);
+      const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = isPercent ? `${val}%` : val; };
+      const setWidth = (id, pct) => { const el = document.getElementById(id); if (el) el.style.width = `${pct}%`; };
+      setText(`cmpval-a-${key}`, aVal);
+      setText(`cmpval-b-${key}`, bVal);
+      setWidth(`cmpbar-a-${key}`, aPct);
+      setWidth(`cmpbar-b-${key}`, bPct);
+    }
+
+    function renderDashboard() {
+      const p = possessionPercent();
+      updateCompareRow('goals', state.teamA.goals, state.teamB.goals);
+      updateCompareRow('shotsOn', state.teamA.shotsOn, state.teamB.shotsOn);
+      updateCompareRow('corners', state.teamA.corners, state.teamB.corners);
+      updateCompareRow('fouls', state.teamA.fouls, state.teamB.fouls);
+      updateCompareRow('possession', p.A, p.B, { isPercent: true });
+      updateCompareRow('passAcc', passAccuracy('teamA'), passAccuracy('teamB'), { isPercent: true });
+    }
+
+    function renderPossessionBar() {
+      const p = possessionPercent();
+      document.getElementById('poss-bar-a').style.width = `${p.A}%`;
+      document.getElementById('poss-bar-b').style.width = `${p.B}%`;
+      document.getElementById('poss-bar-neutral').style.width = `${p.neutral}%`;
+      document.getElementById('poss-label-a').textContent = `${p.A}%`;
+      document.getElementById('poss-label-b').textContent = `${p.B}%`;
+      document.getElementById('poss-label-neutral').textContent = `${p.neutral}%`;
+    }
+
+    function renderPossessionButtons() {
+      const map = { A: 'btn-poss-a', neutral: 'btn-poss-neutral', B: 'btn-poss-b' };
+      Object.entries(map).forEach(([key, id]) => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        const active = state.possession.current === key;
+        btn.classList.toggle('poss-active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+    }
+
+    function renderTimerDisplay() {
+      document.getElementById('timer-display').textContent = formatTime(state.timer.elapsed);
+    }
+
+    function renderTimerToggleButton() {
+      const iconUse = document.getElementById('timer-toggle-icon-use');
+      const label = document.getElementById('timer-toggle-label');
+      if (state.timer.running) {
+        iconUse.setAttribute('href', '#icon-pause');
+        label.textContent = 'Jeda';
+      } else {
+        iconUse.setAttribute('href', '#icon-play');
+        label.textContent = 'Mulai';
+      }
+    }
+
+    function renderStatusBadge() {
+      const el = document.getElementById('match-status-badge');
+      el.classList.remove('badge-idle', 'badge-paused', 'badge-live', 'badge-finished', 'animate-pulse');
+      if (state.matchFinishedAt) {
+        el.textContent = 'SELESAI'; el.classList.add('badge-finished');
+      } else if (state.timer.running) {
+        el.textContent = '● LIVE'; el.classList.add('badge-live', 'animate-pulse');
+      } else if (state.matchStartedAt) {
+        el.textContent = 'JEDA'; el.classList.add('badge-paused');
+      } else {
+        el.textContent = 'BELUM MULAI'; el.classList.add('badge-idle');
+      }
+    }
+
+    function updateTeamNameSlots() {
+      document.querySelectorAll('.slot-teamA-name').forEach((el) => { el.textContent = state.teamAName || 'Tim A'; });
+      document.querySelectorAll('.slot-teamB-name').forEach((el) => { el.textContent = state.teamBName || 'Tim B'; });
+    }
+
+    function renderAll() {
+      ['A', 'B'].forEach((letter) => {
+        const teamKey = letter === 'A' ? 'teamA' : 'teamB';
+        [...STAT_DEFS, ...PASS_DEFS].forEach((def) => {
+          const el = document.getElementById(`stat-${letter}-${def.key}`);
+          if (el) el.textContent = state[teamKey][def.key] ?? 0;
+        });
+        updatePassAccuracyDisplay(teamKey);
+      });
+      updateScoreboard();
+      renderDashboard();
+      renderPossessionBar();
+      renderPossessionButtons();
+      renderTimerDisplay();
+      renderTimerToggleButton();
+      renderStatusBadge();
+      document.getElementById('input-teamA-name').value = state.teamAName ?? 'Tim A';
+      document.getElementById('input-teamB-name').value = state.teamBName ?? 'Tim B';
+      updateTeamNameSlots();
+    }
+
+    // ---------- 7. Export (JSON / formatted text) --------------------------
+    function buildExportObject() {
+      const p = possessionPercent();
+      const nameA = state.teamAName || 'Tim A';
+      const nameB = state.teamBName || 'Tim B';
+      return {
+        meta: {
+          namaTimA: nameA,
+          namaTimB: nameB,
+          durasiPertandingan: formatTime(state.timer.elapsed),
+          waktuMulai: state.matchStartedAt ? new Date(state.matchStartedAt).toISOString() : null,
+          waktuSelesai: state.matchFinishedAt ? new Date(state.matchFinishedAt).toISOString() : null,
+          dibuatOleh: 'Live Football Match Stats Tracker',
+        },
+        skorAkhir: { [nameA]: state.teamA.goals, [nameB]: state.teamB.goals },
+        penguasaanBola: { [nameA]: `${p.A}%`, netral: `${p.neutral}%`, [nameB]: `${p.B}%` },
+        statistik: {
+          [nameA]: { ...state.teamA, akurasiPassing: `${passAccuracy('teamA')}%` },
+          [nameB]: { ...state.teamB, akurasiPassing: `${passAccuracy('teamB')}%` },
+        },
+      };
+    }
+
+    function buildTextReport() {
+      const nameA = state.teamAName || 'Tim A';
+      const nameB = state.teamBName || 'Tim B';
+      const p = possessionPercent();
+      const line = '='.repeat(50);
+      const dash = '-'.repeat(50);
+      const rows = [
+        ['Gol', state.teamA.goals, state.teamB.goals],
+        ['Tembakan Tepat Sasaran', state.teamA.shotsOn, state.teamB.shotsOn],
+        ['Tembakan Melenceng', state.teamA.shotsOff, state.teamB.shotsOff],
+        ['Tendangan Sudut', state.teamA.corners, state.teamB.corners],
+        ['Offside', state.teamA.offsides, state.teamB.offsides],
+        ['Kartu Kuning', state.teamA.yellowCards, state.teamB.yellowCards],
+        ['Kartu Merah', state.teamA.redCards, state.teamB.redCards],
+        ['Pelanggaran', state.teamA.fouls, state.teamB.fouls],
+        ['Penyelamatan Kiper', state.teamA.saves, state.teamB.saves],
+        ['Umpan Sukses', state.teamA.passSuccess, state.teamB.passSuccess],
+        ['Umpan Gagal', state.teamA.passFail, state.teamB.passFail],
+        ['Akurasi Passing', `${passAccuracy('teamA')}%`, `${passAccuracy('teamB')}%`],
+      ];
+
+      let out = '';
+      out += `${line}\n`;
+      out += `  LIVE FOOTBALL MATCH STATS TRACKER — RINGKASAN AKHIR\n`;
+      out += `${line}\n`;
+      out += `Tanggal        : ${new Date().toLocaleString('id-ID')}\n`;
+      out += `Durasi         : ${formatTime(state.timer.elapsed)}\n\n`;
+      out += `${nameA}  ${state.teamA.goals}  vs  ${state.teamB.goals}  ${nameB}\n\n`;
+      out += `STATISTIK PERTANDINGAN\n${dash}\n`;
+      out += `${'STAT'.padEnd(24)}${String(nameA).padEnd(14)}${nameB}\n`;
+      rows.forEach(([label, a, b]) => {
+        out += `${label.padEnd(24)}${String(a).padEnd(14)}${String(b)}\n`;
+      });
+      out += `\nPENGUASAAN BOLA\n${dash}\n`;
+      out += `${nameA}: ${p.A}%   Netral: ${p.neutral}%   ${nameB}: ${p.B}%\n`;
+      out += `\nDibuat otomatis oleh Live Football Match Stats Tracker\n`;
+      return out;
+    }
+
+    function timestampSlug() {
+      const d = new Date();
+      const pad = (n) => n.toString().padStart(2, '0');
+      return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+    }
+
+    function triggerDownload(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function downloadJSON() {
+      const blob = new Blob([JSON.stringify(buildExportObject(), null, 2)], { type: 'application/json' });
+      triggerDownload(blob, `match-stats-${timestampSlug()}.json`);
+    }
+
+    function downloadTXT() {
+      const blob = new Blob([buildTextReport()], { type: 'text/plain;charset=utf-8' });
+      triggerDownload(blob, `match-stats-${timestampSlug()}.txt`);
+    }
+
+    function renderFinishModalContent() {
+      const nameA = escapeHtml(state.teamAName || 'Tim A');
+      const nameB = escapeHtml(state.teamBName || 'Tim B');
+      const p = possessionPercent();
+      const rows = [
+        ['Gol', state.teamA.goals, state.teamB.goals],
+        ['Tembakan Tepat Sasaran', state.teamA.shotsOn, state.teamB.shotsOn],
+        ['Tembakan Melenceng', state.teamA.shotsOff, state.teamB.shotsOff],
+        ['Tendangan Sudut', state.teamA.corners, state.teamB.corners],
+        ['Offside', state.teamA.offsides, state.teamB.offsides],
+        ['Kartu Kuning', state.teamA.yellowCards, state.teamB.yellowCards],
+        ['Kartu Merah', state.teamA.redCards, state.teamB.redCards],
+        ['Pelanggaran', state.teamA.fouls, state.teamB.fouls],
+        ['Penyelamatan Kiper', state.teamA.saves, state.teamB.saves],
+        ['Akurasi Passing', `${passAccuracy('teamA')}%`, `${passAccuracy('teamB')}%`],
+      ];
+      const rowsHtml = rows.map(([label, a, b]) => `
+        <div class="flex items-center justify-between text-xs sm:text-sm border-b border-hairline/60 py-1.5">
+          <span class="text-gold font-mono font-bold w-10">${a}</span>
+          <span class="text-muted flex-1 text-center px-2">${label}</span>
+          <span class="text-crimson font-mono font-bold w-10 text-right">${b}</span>
+        </div>`).join('');
+
+      document.getElementById('finish-modal-body').innerHTML = `
+        <div class="text-center mb-2">
+          <div class="font-display text-3xl sm:text-4xl font-bold tabular-nums">${state.teamA.goals} : ${state.teamB.goals}</div>
+          <div class="flex justify-between text-xs sm:text-sm mt-1">
+            <span class="text-gold font-bold">${nameA}</span>
+            <span class="text-crimson font-bold">${nameB}</span>
+          </div>
+          <div class="text-muted text-[11px] sm:text-xs mt-1">
+            Durasi ${formatTime(state.timer.elapsed)} &middot; Penguasaan ${p.A}% - ${p.neutral}% - ${p.B}%
+          </div>
+        </div>
+        <div class="mt-3">${rowsHtml}</div>`;
+    }
+
+    function openFinishModal() {
+      renderFinishModalContent();
+      document.getElementById('finish-modal').classList.remove('hidden');
+      document.getElementById('finish-modal').classList.add('flex');
+    }
+
+    function closeFinishModal() {
+      document.getElementById('finish-modal').classList.add('hidden');
+      document.getElementById('finish-modal').classList.remove('flex');
+    }
+
+    // ---------- 8. Event binding & init -------------------------------------
+    function bindEvents() {
+      // Single delegated listener covers every +/- button in both team
+      // panels (main stats + passing) — buttons never need to be rebound,
+      // so rapid or repeated taps can never leave a button "stuck".
+      document.getElementById('main-stats-area').addEventListener('click', (e) => {
+        const btn = e.target.closest('.stat-btn');
+        if (!btn) return;
+        const teamKey = btn.dataset.team === 'A' ? 'teamA' : 'teamB';
+        const statKey = btn.dataset.stat;
+        const delta = parseInt(btn.dataset.delta, 10) || 0;
+        changeStat(teamKey, statKey, delta);
+      });
+
+      document.getElementById('input-teamA-name').addEventListener('input', (e) => {
+        state.teamAName = e.target.value;
+        saveState();
+        updateTeamNameSlots();
+      });
+      document.getElementById('input-teamB-name').addEventListener('input', (e) => {
+        state.teamBName = e.target.value;
+        saveState();
+        updateTeamNameSlots();
+      });
+
+      document.getElementById('btn-timer-toggle').addEventListener('click', toggleTimer);
+      document.getElementById('btn-reset-match').addEventListener('click', resetMatch);
+      document.getElementById('btn-finish-match').addEventListener('click', finishMatch);
+
+      document.getElementById('btn-poss-a').addEventListener('click', () => setPossession('A'));
+      document.getElementById('btn-poss-neutral').addEventListener('click', () => setPossession('neutral'));
+      document.getElementById('btn-poss-b').addEventListener('click', () => setPossession('B'));
+
+      document.getElementById('btn-download-json').addEventListener('click', downloadJSON);
+      document.getElementById('btn-download-txt').addEventListener('click', downloadTXT);
+      document.getElementById('btn-modal-close').addEventListener('click', closeFinishModal);
+      document.getElementById('btn-modal-close-x').addEventListener('click', closeFinishModal);
+      document.getElementById('btn-modal-newmatch').addEventListener('click', resetMatch);
+
+      const rotateHint = document.getElementById('rotate-hint');
+      const dismissBtn = document.getElementById('btn-dismiss-rotate-hint');
+      if (dismissBtn) dismissBtn.addEventListener('click', () => { rotateHint.style.display = 'none'; });
+
+      // Guard against accidental navigation/refresh once a match is underway.
+      window.addEventListener('beforeunload', (e) => {
+        const hasProgress = !state.matchFinishedAt && (
+          state.matchStartedAt ||
+          Object.values(state.teamA).some((v) => v > 0) ||
+          Object.values(state.teamB).some((v) => v > 0)
+        );
+        if (hasProgress) {
+          e.preventDefault();
+          e.returnValue = '';
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      state = loadState();
+      buildStatGrids();
+      bindEvents();
+      renderAll();
+      resumeTimerIfNeeded();
+    });
+  })();
+  </script>
+</body>
+</html>
