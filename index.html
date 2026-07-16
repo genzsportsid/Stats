@@ -34,9 +34,6 @@
 </head>
 <body class="min-h-screen flex flex-col">
 
-    <!-- ========================================== -->
-    <!-- SCREEN 1: SETUP & AUTHENTICATION -->
-    <!-- ========================================== -->
     <div id="screen-setup" class="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 max-w-lg mx-auto w-full">
         <div class="mb-6 text-center">
             <h1 class="text-2xl sm:text-3xl font-black uppercase tracking-widest text-brand-green flex items-center justify-center gap-2">
@@ -117,12 +114,8 @@
         </div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- SCREEN 2: MAIN TRACKER WORKSPACE -->
-    <!-- ========================================== -->
     <div id="screen-tracker" class="hidden flex-1 flex flex-col h-screen overflow-hidden">
         
-        <!-- HEADER -->
         <header class="bg-panel border-b border-hairline p-3 md:p-4 flex items-center justify-between shrink-0 z-20 shadow-md">
             <div class="flex flex-col max-w-[40%]">
                 <span id="hdr-match-id" class="text-[9px] font-bold text-gray-500 uppercase tracking-widest truncate">MATCH</span>
@@ -146,12 +139,9 @@
             </div>
         </header>
 
-        <!-- DYNAMIC WORKSPACE GRID (DI-INJEKSI JS) -->
         <div id="workspace-container" class="flex-1 overflow-y-auto p-2 sm:p-4 md:p-6 bg-night">
-            <!-- Isi akan digenerate secara otomatis oleh JS agar layout sempurna -->
-        </div>
+            </div>
         
-        <!-- NOTIFIKASI SYNC -->
         <div id="log-status" class="bg-brand-green text-white text-center text-[10px] sm:text-xs font-bold uppercase tracking-widest p-2 hidden shadow-[0_-5px_15px_rgba(0,154,68,0.3)] z-50">
             Data Berhasil Diunggah!
         </div>
@@ -160,26 +150,23 @@
     <script>
         lucide.createIcons();
         const API_URL = "https://script.google.com/macros/s/AKfycbzAeXyhA-VIDTJQfmOnPfv0o9NZQXJg9PIk1r1FpSWeqH3TvInjK6QnhONhLieHiqY/exec";
-        const STORAGE_KEY = 'TSL_StatMaker_V3_UX';
+        const STORAGE_KEY = 'TSL_StatMaker_V4_UX';
         
         let matchesData = [];
         let currentMatch = null;
         let activeRole = 'possession';
 
+        // URUTAN BARU (Passing diisolasi ke blok atas. Tembakan & Bertahan dipisah)
         const STAT_DEFS = [
             { key: 'goals',       label: 'Gol', emoji: '⚽' },
             { key: 'shotsOn',     label: 'Tepat Sasaran', emoji: '🎯' },
             { key: 'shotsOff',    label: 'Melenceng', emoji: '↗️' },
             { key: 'corners',     label: 'Corner', emoji: '⛳' },
             { key: 'offsides',    label: 'Offside', emoji: '🚩' },
+            { key: 'fouls',       label: 'Pelanggaran', emoji: '🛑' },
             { key: 'yellowCards', label: 'K. Kuning', emoji: '🟨' },
             { key: 'redCards',    label: 'K. Merah', emoji: '🟥' },
-            { key: 'fouls',       label: 'Pelanggaran', emoji: '🛑' },
             { key: 'saves',       label: 'Penyelamatan', emoji: '🧤' }
-        ];
-        const PASS_DEFS = [
-            { key: 'passSuccess', label: 'Umpan Sukses', emoji: '✅' },
-            { key: 'passFail',    label: 'Umpan Gagal', emoji: '❌' }
         ];
 
         function createEmptyStats() {
@@ -207,15 +194,15 @@
             let raw = localStorage.getItem(STORAGE_KEY);
             if(raw) {
                 let data = JSON.parse(raw); currentMatch = data.match; activeRole = data.role; state = data.state;
-                state.timer.isRunning = false; // Auto pause upon resume
+                state.timer.isRunning = false;
                 document.getElementById('screen-setup').classList.add('hidden');
                 document.getElementById('screen-tracker').classList.remove('hidden'); document.getElementById('screen-tracker').classList.add('flex');
                 
                 buildWorkspace();
                 
-                // Trigger refresh UI
                 STAT_DEFS.forEach(k => { updateStatUI('teamA', k.key); updateStatUI('teamB', k.key); });
-                PASS_DEFS.forEach(k => { updateStatUI('teamA', k.key); updateStatUI('teamB', k.key); });
+                updateStatUI('teamA', 'passSuccess'); updateStatUI('teamA', 'passFail');
+                updateStatUI('teamB', 'passSuccess'); updateStatUI('teamB', 'passFail');
                 setPossession(state.possession.active);
             }
         }
@@ -268,15 +255,13 @@
         }
 
         // ==============================================
-        // BUILD WORKSPACE (H2H UX APPROACH)
+        // BUILD WORKSPACE (H2H UX & ISOLASI PASSING)
         // ==============================================
         function buildWorkspace() {
             let tA = currentMatch.tim_kiri || currentMatch.Tim_Kiri; let tB = currentMatch.tim_kanan || currentMatch.Tim_Kanan;
             document.getElementById('hdr-match-id').innerText = `MATCH ${currentMatch.id_match || currentMatch.ID_Match}`;
             
-            let wg = document.getElementById('workspace-container');
-            wg.innerHTML = ''; // Bersihkan kontainer
-            
+            let wg = document.getElementById('workspace-container'); wg.innerHTML = ''; 
             let tBtn = document.getElementById('timer-container'); tBtn.classList.add('hidden');
 
             // --- KOMPONEN: POSSESSION PANEL ---
@@ -287,7 +272,6 @@
                         <h2 class="text-sm sm:text-lg font-black uppercase tracking-widest text-primary">BALL POSSESSION</h2>
                     </div>
                     <div class="p-4 sm:p-6 flex flex-col items-center gap-6">
-                        <!-- Baris Tombol Besar -->
                         <div class="flex w-full justify-between items-center gap-2 sm:gap-4">
                             <button onclick="setPossession('A')" id="btn-poss-a" class="stat-btn flex-1 bg-night border border-hairline p-4 sm:p-6 rounded-2xl flex flex-col items-center justify-center gap-2 opacity-50 transition-all">
                                 <div class="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-blue-500 indicator-dot"></div>
@@ -302,7 +286,6 @@
                                 <span class="text-[10px] sm:text-xs font-bold text-gray-400 uppercase text-center line-clamp-2 leading-tight">${tB}</span>
                             </button>
                         </div>
-                        <!-- Visual Bar Bawah -->
                         <div class="w-full flex h-3 sm:h-4 rounded-full overflow-hidden bg-night border border-hairline relative">
                             <div id="bar-a" class="poss-bar h-full bg-blue-500" style="width: 33.3%;"></div>
                             <div id="bar-n" class="poss-bar h-full bg-gray-500" style="width: 33.3%;"></div>
@@ -317,16 +300,54 @@
                 </div>`;
             };
 
+            // --- KOMPONEN: BLOK UMPAN TERISOLASI (SINGLE) ---
+            const renderSinglePassingBlock = (teamKey, colorClass, btnBgClass, btnShadowClass) => {
+                return `
+                <div class="bg-night border border-hairline p-3 sm:p-4 rounded-2xl mb-5 shadow-inner relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-${colorClass.replace('text-', '')}/20"></div>
+                    <div class="flex justify-between items-center mb-4 border-b border-hairline pb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xl sm:text-2xl">👟</span>
+                            <span class="text-xs sm:text-sm font-black text-gray-300 uppercase tracking-widest">Aktivitas Umpan</span>
+                        </div>
+                        <span id="passacc-${teamKey}" class="text-2xl sm:text-3xl font-black ${colorClass} font-mono drop-shadow-md">0%</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-panel border border-brand-green/20 p-3 sm:p-4 rounded-xl flex flex-col items-center">
+                            <span class="text-[10px] sm:text-xs font-bold text-brand-green uppercase mb-3 text-center"><span class="text-lg sm:text-xl">✅</span><br>Sukses</span>
+                            <div class="flex justify-between w-full gap-1 items-center">
+                                <button onclick="updateStat('${teamKey}', 'passSuccess', -1)" class="stat-btn w-10 h-10 rounded-full bg-night border border-hairline text-gray-500 flex items-center justify-center shrink-0"><i data-lucide="minus" class="w-4 h-4"></i></button>
+                                <span id="val-${teamKey}-passSuccess" class="text-xl sm:text-2xl font-black tabular-nums">0</span>
+                                <button onclick="updateStat('${teamKey}', 'passSuccess', 1)" class="stat-btn w-14 h-14 rounded-full ${btnBgClass} text-white font-black flex items-center justify-center shrink-0 shadow-[0_4px_15px_${btnShadowClass}]"><i data-lucide="plus" class="w-6 h-6"></i></button>
+                            </div>
+                        </div>
+                        <div class="bg-panel border border-hairline p-3 sm:p-4 rounded-xl flex flex-col items-center">
+                            <span class="text-[10px] sm:text-xs font-bold text-gray-400 uppercase mb-3 text-center"><span class="text-lg sm:text-xl">❌</span><br>Gagal</span>
+                            <div class="flex justify-between w-full gap-1 items-center">
+                                <button onclick="updateStat('${teamKey}', 'passFail', -1)" class="stat-btn w-10 h-10 rounded-full bg-night border border-hairline text-gray-500 flex items-center justify-center shrink-0"><i data-lucide="minus" class="w-4 h-4"></i></button>
+                                <span id="val-${teamKey}-passFail" class="text-xl sm:text-2xl font-black tabular-nums">0</span>
+                                <button onclick="updateStat('${teamKey}', 'passFail', 1)" class="stat-btn w-12 h-12 rounded-full bg-gray-600 text-white font-black flex items-center justify-center shrink-0 shadow-md"><i data-lucide="plus" class="w-5 h-5"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            };
+
             // --- KOMPONEN: SINGLE TEAM PANEL ---
-            const renderSinglePanel = (teamKey, teamName, colorClass, borderClass, bgClass) => {
+            const renderSinglePanel = (teamKey, teamName, colorClass, bgClass, btnBgClass, btnShadowClass) => {
                 let html = `<div class="bg-panel border border-hairline rounded-2xl overflow-hidden shadow-lg w-full max-w-md mx-auto mb-6">
                     <div class="${bgClass} border-b border-hairline p-3 sm:p-4 text-center">
                         <h2 class="text-sm sm:text-lg font-black uppercase tracking-widest ${colorClass}">${teamName}</h2>
                     </div>
-                    <div class="p-3 sm:p-4 space-y-2.5">`;
+                    <div class="p-3 sm:p-4">`;
                 
-                let combinedDefs = [...STAT_DEFS, ...PASS_DEFS];
-                combinedDefs.forEach(k => {
+                // INJEKSI PASSING (SUPER PRIORITAS)
+                html += renderSinglePassingBlock(teamKey, colorClass, btnBgClass, btnShadowClass);
+
+                html += `<div class="space-y-2.5">`;
+                STAT_DEFS.forEach((k, index) => {
+                    if(index === 0) html += `<div class="text-[9px] sm:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 mt-2 text-center bg-hairline/30 py-1 rounded">-- TEMBAKAN & PELUANG --</div>`;
+                    if(index === 3) html += `<div class="text-[9px] sm:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 mt-4 text-center bg-hairline/30 py-1 rounded">-- KONDISI & BERTAHAN --</div>`;
                     html += `
                     <div class="flex items-center justify-between bg-night border border-hairline p-2 sm:p-3 rounded-xl">
                         <div class="flex items-center gap-2 w-1/2">
@@ -336,17 +357,63 @@
                         <div class="flex items-center justify-end gap-2 w-1/2">
                             <button onclick="updateStat('${teamKey}', '${k.key}', -1)" class="stat-btn w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-full bg-night border border-hairline flex items-center justify-center text-gray-500 hover:text-white"><i data-lucide="minus" class="w-4 h-4"></i></button>
                             <span id="val-${teamKey}-${k.key}" class="text-xl sm:text-2xl font-black w-8 sm:w-10 text-center text-white tabular-nums">0</span>
-                            <button onclick="updateStat('${teamKey}', '${k.key}', 1)" class="stat-btn w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-full ${colorClass.replace('text-','bg-')}/20 ${colorClass} font-black flex items-center justify-center border border-${colorClass.replace('text-','')} shadow-[0_0_10px_currentColor]"><i data-lucide="plus" class="w-5 h-5"></i></button>
+                            <button onclick="updateStat('${teamKey}', '${k.key}', 1)" class="stat-btn w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-full ${btnBgClass} text-white font-black flex items-center justify-center shadow-[0_0_10px_${btnShadowClass}]"><i data-lucide="plus" class="w-5 h-5"></i></button>
                         </div>
                     </div>`;
                 });
-
-                // Inject Passing Acc Text
-                html += `<div class="flex justify-between items-center bg-night border border-hairline p-3 rounded-xl mt-4">
-                            <span class="text-[10px] font-bold ${colorClass} uppercase tracking-widest">Akurasi Passing</span>
-                            <span id="passacc-${teamKey}" class="text-xl font-black text-white font-mono">0%</span>
-                         </div></div></div>`;
+                html += `</div></div></div>`;
                 return html;
+            };
+
+            // --- KOMPONEN: BLOK UMPAN TERISOLASI (H2H UNIFIED) ---
+            const renderUnifiedPassingBlock = () => {
+                return `
+                <div class="bg-night border border-hairline rounded-2xl p-3 sm:p-4 mb-5 shadow-inner relative overflow-hidden">
+                    <div class="flex justify-between items-center mb-4 border-b border-hairline pb-2">
+                        <span id="passacc-teamA" class="w-1/3 text-left text-2xl sm:text-3xl font-black text-blue-400 font-mono">0%</span>
+                        <div class="w-1/3 flex flex-col items-center">
+                            <span class="text-2xl">👟</span>
+                            <span class="text-[8px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center mt-1">Akurasi Umpan</span>
+                        </div>
+                        <span id="passacc-teamB" class="w-1/3 text-right text-2xl sm:text-3xl font-black text-red-400 font-mono">0%</span>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between bg-panel border border-brand-green/20 p-2 sm:p-3 rounded-xl">
+                            <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+                                <button onclick="updateStat('teamA', 'passSuccess', -1)" class="stat-btn w-10 h-10 bg-night border border-hairline rounded-full flex justify-center items-center text-gray-500 hover:text-white shrink-0"><i data-lucide="minus" class="w-4 h-4"></i></button>
+                                <span id="val-teamA-passSuccess" class="w-8 sm:w-10 text-center text-xl sm:text-2xl font-black text-white shrink-0 tabular-nums">0</span>
+                                <button onclick="updateStat('teamA', 'passSuccess', 1)" class="stat-btn w-14 h-14 bg-blue-600 rounded-full flex justify-center items-center text-white shadow-[0_4px_15px_rgba(37,99,235,0.4)] shrink-0"><i data-lucide="plus" class="w-6 h-6"></i></button>
+                            </div>
+                            <div class="flex-1 flex flex-col items-center justify-center text-center px-1">
+                                <span class="text-lg sm:text-xl mb-1">✅</span>
+                                <span class="text-[8px] sm:text-[10px] font-bold text-brand-green uppercase leading-tight">Umpan Sukses</span>
+                            </div>
+                            <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+                                <button onclick="updateStat('teamB', 'passSuccess', 1)" class="stat-btn w-14 h-14 bg-red-600 rounded-full flex justify-center items-center text-white shadow-[0_4px_15px_rgba(220,38,38,0.4)] shrink-0"><i data-lucide="plus" class="w-6 h-6"></i></button>
+                                <span id="val-teamB-passSuccess" class="w-8 sm:w-10 text-center text-xl sm:text-2xl font-black text-white shrink-0 tabular-nums">0</span>
+                                <button onclick="updateStat('teamB', 'passSuccess', -1)" class="stat-btn w-10 h-10 bg-night border border-hairline rounded-full flex justify-center items-center text-gray-500 hover:text-white shrink-0"><i data-lucide="minus" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center justify-between bg-panel border border-hairline p-2 sm:p-3 rounded-xl">
+                            <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+                                <button onclick="updateStat('teamA', 'passFail', -1)" class="stat-btn w-10 h-10 bg-night border border-hairline rounded-full flex justify-center items-center text-gray-500 hover:text-white shrink-0"><i data-lucide="minus" class="w-4 h-4"></i></button>
+                                <span id="val-teamA-passFail" class="w-8 sm:w-10 text-center text-xl sm:text-2xl font-black text-white shrink-0 tabular-nums">0</span>
+                                <button onclick="updateStat('teamA', 'passFail', 1)" class="stat-btn w-12 h-12 bg-gray-600 rounded-full flex justify-center items-center text-white shadow-md shrink-0"><i data-lucide="plus" class="w-5 h-5"></i></button>
+                            </div>
+                            <div class="flex-1 flex flex-col items-center justify-center text-center px-1">
+                                <span class="text-lg sm:text-xl mb-1">❌</span>
+                                <span class="text-[8px] sm:text-[10px] font-bold text-gray-400 uppercase leading-tight">Umpan Gagal</span>
+                            </div>
+                            <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+                                <button onclick="updateStat('teamB', 'passFail', 1)" class="stat-btn w-12 h-12 bg-gray-600 rounded-full flex justify-center items-center text-white shadow-md shrink-0"><i data-lucide="plus" class="w-5 h-5"></i></button>
+                                <span id="val-teamB-passFail" class="w-8 sm:w-10 text-center text-xl sm:text-2xl font-black text-white shrink-0 tabular-nums">0</span>
+                                <button onclick="updateStat('teamB', 'passFail', -1)" class="stat-btn w-10 h-10 bg-night border border-hairline rounded-full flex justify-center items-center text-gray-500 hover:text-white shrink-0"><i data-lucide="minus" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
             };
 
             // --- KOMPONEN: H2H UNIFIED PANEL (Untuk 2 Tim / Master) ---
@@ -357,24 +424,26 @@
                         <span class="w-1/5 text-center text-[8px] sm:text-[10px] font-bold text-gray-500 uppercase tracking-widest bg-night px-2 py-1 rounded-full border border-hairline">H2H STATS</span>
                         <h2 class="w-2/5 text-right text-xs sm:text-base font-black uppercase tracking-widest text-red-400 truncate pl-2">${tB}</h2>
                     </div>
-                    <div class="p-2 sm:p-4 space-y-2">`;
+                    <div class="p-2 sm:p-4">`;
                 
-                let combinedDefs = [...STAT_DEFS, ...PASS_DEFS];
-                combinedDefs.forEach(k => {
+                // INJEKSI PASSING (SUPER PRIORITAS)
+                html += renderUnifiedPassingBlock();
+
+                html += `<div class="space-y-2">`;
+                STAT_DEFS.forEach((k, index) => {
+                    if(index === 0) html += `<div class="text-[9px] sm:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 mt-2 text-center bg-hairline/30 py-1 rounded">-- TEMBAKAN & PELUANG --</div>`;
+                    if(index === 3) html += `<div class="text-[9px] sm:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 mt-4 text-center bg-hairline/30 py-1 rounded">-- KONDISI & BERTAHAN --</div>`;
                     html += `
                     <div class="flex items-center justify-between bg-night border border-hairline p-2 sm:p-3 rounded-xl">
-                        <!-- TIM KIRI (A) -->
                         <div class="flex items-center gap-1 sm:gap-2 shrink-0">
                             <button onclick="updateStat('teamA', '${k.key}', -1)" class="stat-btn w-8 h-8 sm:w-10 sm:h-10 bg-panel border border-hairline rounded-full flex justify-center items-center text-gray-500 hover:text-white shrink-0"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
                             <span id="val-teamA-${k.key}" class="w-6 sm:w-8 text-center text-lg sm:text-xl font-black text-white shrink-0 tabular-nums">0</span>
                             <button onclick="updateStat('teamA', '${k.key}', 1)" class="stat-btn w-10 h-10 sm:w-12 sm:h-12 bg-blue-600 rounded-full flex justify-center items-center text-white shadow-[0_4px_15px_rgba(37,99,235,0.4)] shrink-0"><i data-lucide="plus" class="w-4 h-4 sm:w-5 sm:h-5"></i></button>
                         </div>
-                        <!-- LABEL STAT TENGAH -->
                         <div class="flex-1 flex flex-col items-center justify-center text-center px-1 overflow-hidden">
                             <span class="text-sm sm:text-base mb-0.5">${k.emoji}</span>
                             <span class="text-[7px] sm:text-[9px] font-bold text-gray-400 uppercase leading-tight truncate w-full">${k.label}</span>
                         </div>
-                        <!-- TIM KANAN (B) -->
                         <div class="flex items-center gap-1 sm:gap-2 shrink-0">
                             <button onclick="updateStat('teamB', '${k.key}', 1)" class="stat-btn w-10 h-10 sm:w-12 sm:h-12 bg-red-600 rounded-full flex justify-center items-center text-white shadow-[0_4px_15px_rgba(220,38,38,0.4)] shrink-0"><i data-lucide="plus" class="w-4 h-4 sm:w-5 sm:h-5"></i></button>
                             <span id="val-teamB-${k.key}" class="w-6 sm:w-8 text-center text-lg sm:text-xl font-black text-white shrink-0 tabular-nums">0</span>
@@ -382,25 +451,18 @@
                         </div>
                     </div>`;
                 });
-
-                // Passing Acc Row (Khusus H2H)
-                html += `
-                    <div class="flex items-center justify-between bg-night border border-hairline p-3 rounded-xl mt-4">
-                        <span id="passacc-teamA" class="w-[30%] text-left text-lg sm:text-xl font-black text-blue-400 font-mono">0%</span>
-                        <span class="w-[40%] text-center text-[8px] sm:text-[10px] font-bold text-gray-500 uppercase tracking-widest">AKURASI PASSING</span>
-                        <span id="passacc-teamB" class="w-[30%] text-right text-lg sm:text-xl font-black text-red-400 font-mono">0%</span>
-                    </div></div></div>`;
+                html += `</div></div></div>`;
                 return html;
             };
 
             // RENDER BERDASARKAN ROLE
             if(activeRole === 'teama') {
                 document.getElementById('hdr-role').innerText = "🛡️ OPR. " + tA;
-                wg.innerHTML = renderSinglePanel('teamA', tA, 'text-blue-400', 'border-blue-900', 'bg-blue-900/20');
+                wg.innerHTML = renderSinglePanel('teamA', tA, 'text-blue-400', 'bg-blue-900/20', 'bg-blue-600', 'rgba(37,99,235,0.4)');
             } 
             else if (activeRole === 'teamb') {
                 document.getElementById('hdr-role').innerText = "⚔️ OPR. " + tB;
-                wg.innerHTML = renderSinglePanel('teamB', tB, 'text-red-400', 'border-red-900', 'bg-red-900/20');
+                wg.innerHTML = renderSinglePanel('teamB', tB, 'text-red-400', 'bg-red-900/20', 'bg-red-600', 'rgba(220,38,38,0.4)');
             } 
             else if (activeRole === 'possession') {
                 document.getElementById('hdr-role').innerText = "⏱️ PENGUASAAN";
@@ -420,7 +482,6 @@
             lucide.createIcons();
             requestAnimationFrame(timerLoop);
             
-            // Render ulang nilai UI jika ini hasil Resume
             let curMin = Math.floor(state.timer.totalMs / 60000).toString().padStart(2, '0');
             let curSec = Math.floor((state.timer.totalMs % 60000) / 1000).toString().padStart(2, '0');
             document.getElementById('match-timer').innerText = `${curMin}:${curSec}`;
@@ -434,7 +495,7 @@
             state[team][stat] += mod;
             if (state[team][stat] < 0) state[team][stat] = 0;
             updateStatUI(team, stat);
-            saveLocal(); // Auto-save on every click
+            saveLocal(); 
         }
 
         function updateStatUI(team, stat) {
@@ -442,7 +503,7 @@
             if(el) {
                 el.innerText = state[team][stat];
                 el.classList.remove('animate-pop');
-                void el.offsetWidth; // trigger reflow
+                void el.offsetWidth; 
                 el.classList.add('animate-pop');
             }
 
@@ -571,10 +632,7 @@
             if(['possession', 'master'].includes(activeRole)) payloadData.stats.possession = { a: pctA, b: pctB, n: (100 - (pctA + pctB)) };
 
             try {
-                await fetch(API_URL, { 
-                    method: 'POST', 
-                    body: JSON.stringify({ action: 'submit_stat_match', payload: payloadData }) 
-                });
+                await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'submit_stat_match', payload: payloadData }) });
                 let log = document.getElementById('log-status');
                 log.classList.remove('hidden'); setTimeout(() => log.classList.add('hidden'), 3000);
                 saveLocal(); 
