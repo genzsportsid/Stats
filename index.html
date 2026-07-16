@@ -27,8 +27,6 @@
         .stat-btn:active { transform: scale(0.95); }
         .loader { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #009A44; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
-        
-        /* Possession Bar Transitions */
         .poss-bar { transition: width 0.3s ease-out; }
     </style>
 </head>
@@ -69,14 +67,14 @@
                         <input type="radio" name="role" value="teama" class="w-4 h-4 text-brand-green accent-brand-green">
                         <div>
                             <span class="block text-[11px] font-bold uppercase text-blue-400" id="label-role-a">🛡️ Operator Tim Kiri</span>
-                            <span class="block text-[9px] text-gray-500 font-medium">Shots, Fouls, Cards</span>
+                            <span class="block text-[9px] text-gray-500 font-medium">Ofensif & Defensif Tim Kiri</span>
                         </div>
                     </label>
                     <label class="flex items-center gap-3 p-3 border border-hairline bg-night rounded-xl cursor-pointer hover:border-brand-green transition-colors">
                         <input type="radio" name="role" value="teamb" class="w-4 h-4 text-brand-green accent-brand-green">
                         <div>
                             <span class="block text-[11px] font-bold uppercase text-red-400" id="label-role-b">⚔️ Operator Tim Kanan</span>
-                            <span class="block text-[9px] text-gray-500 font-medium">Shots, Fouls, Cards</span>
+                            <span class="block text-[9px] text-gray-500 font-medium">Ofensif & Defensif Tim Kanan</span>
                         </div>
                     </label>
                     <label class="flex items-center gap-3 p-3 border border-hairline bg-night rounded-xl cursor-pointer hover:border-brand-gold transition-colors">
@@ -119,19 +117,25 @@
 
         <div id="workspace-grid" class="flex-1 overflow-y-auto p-4 md:p-6 grid gap-6 grid-cols-1 md:grid-cols-3 items-start">
             
-            <div id="panel-teama" class="hidden bg-panel border border-hairline rounded-2xl overflow-hidden shadow-lg">
+            <div id="panel-teama" class="hidden bg-panel border border-hairline rounded-2xl overflow-hidden shadow-lg pb-4">
                 <div class="bg-blue-900/20 border-b border-blue-900/30 p-4 text-center">
                     <h2 id="name-teama" class="text-lg font-black uppercase tracking-widest text-blue-400">TIM KIRI</h2>
-                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Statistik Tim</span>
+                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Statistik Utama</span>
                 </div>
-                <div id="stats-grid-a" class="p-4 grid grid-cols-1 gap-3">
+                <div id="stats-grid-a" class="p-4 grid grid-cols-1 gap-2.5"></div>
+                <div class="px-4 mt-2">
+                    <div class="bg-blue-900/10 border border-blue-900/30 p-3 rounded-xl mb-3 flex justify-between items-center">
+                        <span class="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Akurasi Passing</span>
+                        <span id="passacc-teama" class="text-xl font-black text-white font-mono">0%</span>
                     </div>
+                    <div id="pass-grid-a" class="grid grid-cols-1 gap-2.5"></div>
+                </div>
             </div>
 
             <div id="panel-possession" class="hidden bg-panel border border-hairline rounded-2xl overflow-hidden shadow-lg">
                 <div class="bg-gray-800/20 border-b border-hairline p-4 text-center">
                     <h2 class="text-lg font-black uppercase tracking-widest text-primary">BALL POSSESSION</h2>
-                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Distribusi Otomatis</span>
+                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Distribusi Timer & Netral</span>
                 </div>
                 
                 <div class="p-6 flex flex-col items-center gap-8">
@@ -144,7 +148,7 @@
                     <div class="flex w-full justify-between px-2">
                         <div class="text-center">
                             <span id="pct-a" class="block text-2xl font-black text-blue-400">33%</span>
-                            <span id="lbl-poss-a" class="text-[9px] font-bold text-gray-500 uppercase">TIM A</span>
+                            <span id="lbl-poss-a" class="text-[9px] font-bold text-gray-500 uppercase truncate w-20 block">TIM A</span>
                         </div>
                         <div class="text-center">
                             <span id="pct-n" class="block text-2xl font-black text-gray-400">33%</span>
@@ -152,7 +156,7 @@
                         </div>
                         <div class="text-center">
                             <span id="pct-b" class="block text-2xl font-black text-red-400">34%</span>
-                            <span id="lbl-poss-b" class="text-[9px] font-bold text-gray-500 uppercase">TIM B</span>
+                            <span id="lbl-poss-b" class="text-[9px] font-bold text-gray-500 uppercase truncate w-20 block">TIM B</span>
                         </div>
                     </div>
 
@@ -173,13 +177,19 @@
                 </div>
             </div>
 
-            <div id="panel-teamb" class="hidden bg-panel border border-hairline rounded-2xl overflow-hidden shadow-lg">
+            <div id="panel-teamb" class="hidden bg-panel border border-hairline rounded-2xl overflow-hidden shadow-lg pb-4">
                 <div class="bg-red-900/20 border-b border-red-900/30 p-4 text-center">
                     <h2 id="name-teamb" class="text-lg font-black uppercase tracking-widest text-red-400">TIM KANAN</h2>
-                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Statistik Tim</span>
+                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Statistik Utama</span>
                 </div>
-                <div id="stats-grid-b" class="p-4 grid grid-cols-1 gap-3">
+                <div id="stats-grid-b" class="p-4 grid grid-cols-1 gap-2.5"></div>
+                <div class="px-4 mt-2">
+                    <div class="bg-red-900/10 border border-red-900/30 p-3 rounded-xl mb-3 flex justify-between items-center">
+                        <span class="text-[10px] font-bold text-red-400 uppercase tracking-widest">Akurasi Passing</span>
+                        <span id="passacc-teamb" class="text-xl font-black text-white font-mono">0%</span>
                     </div>
+                    <div id="pass-grid-b" class="grid grid-cols-1 gap-2.5"></div>
+                </div>
             </div>
             
         </div>
@@ -199,30 +209,33 @@
         let currentMatch = null;
         let activeRole = 'possession';
 
-        // STATE PERTANDINGAN
-        const statKeys = [
-            { id: 'shots', label: 'Tembakan (Shots)' },
-            { id: 'sot', label: 'Tembakan Ke Gawang (SOT)' },
-            { id: 'fouls', label: 'Pelanggaran' },
-            { id: 'corners', label: 'Tendangan Sudut' },
-            { id: 'offsides', label: 'Offside' },
-            { id: 'saves', label: 'Penyelamatan Kiper' }
+        // DEFINISI 11 TITIK DATA SESUAI FILE INDEX (39)
+        const STAT_DEFS = [
+            { key: 'goals',       label: 'Gol', emoji: '⚽' },
+            { key: 'shotsOn',     label: 'SOT (Tepat Sasaran)', emoji: '🎯' },
+            { key: 'shotsOff',    label: 'Tembakan Melenceng', emoji: '↗️' },
+            { key: 'corners',     label: 'Tendangan Sudut', emoji: '⛳' },
+            { key: 'offsides',    label: 'Offside', emoji: '🚩' },
+            { key: 'yellowCards', label: 'Kartu Kuning', emoji: '🟨' },
+            { key: 'redCards',    label: 'Kartu Merah', emoji: '🟥' },
+            { key: 'fouls',       label: 'Pelanggaran', emoji: '🛑' },
+            { key: 'saves',       label: 'Peny. Kiper', emoji: '🧤' }
         ];
 
+        const PASS_DEFS = [
+            { key: 'passSuccess', label: 'Umpan Sukses', emoji: '✅' },
+            { key: 'passFail',    label: 'Umpan Gagal', emoji: '❌' }
+        ];
+
+        function createEmptyStats() {
+            return { goals: 0, shotsOn: 0, shotsOff: 0, corners: 0, offsides: 0, yellowCards: 0, redCards: 0, fouls: 0, saves: 0, passSuccess: 0, passFail: 0 };
+        }
+
         let state = {
-            teamA: { shots:0, sot:0, fouls:0, corners:0, offsides:0, saves:0 },
-            teamB: { shots:0, sot:0, fouls:0, corners:0, offsides:0, saves:0 },
-            possession: {
-                active: 'N', // A, B, atau N (Neutral)
-                timeA_ms: 0,
-                timeB_ms: 0,
-                timeN_ms: 0
-            },
-            timer: {
-                isRunning: false,
-                totalMs: 0,
-                lastTick: 0
-            }
+            teamA: createEmptyStats(),
+            teamB: createEmptyStats(),
+            possession: { active: 'N', timeA_ms: 0, timeB_ms: 0, timeN_ms: 0 },
+            timer: { isRunning: false, totalMs: 0, lastTick: 0 }
         };
 
         // ==============================================
@@ -240,11 +253,8 @@
                     let idm = m.id_match || m.ID_Match; 
                     if(idm) select.innerHTML += `<option value="${idm}">${m.tim_kiri || m.Tim_Kiri} VS ${m.tim_kanan || m.Tim_Kanan} (${idm})</option>`; 
                 });
-            } catch(e) {
-                select.innerHTML = '<option value="">Gagal Memuat. Cek Koneksi.</option>';
-            } finally {
-                document.getElementById('loading-setup').classList.add('hidden');
-            }
+            } catch(e) { select.innerHTML = '<option value="">Gagal Memuat. Cek Koneksi.</option>'; } 
+            finally { document.getElementById('loading-setup').classList.add('hidden'); }
         }
 
         function updateSetupTeams() {
@@ -262,13 +272,11 @@
         function startSession() {
             let id = document.getElementById('select-match').value;
             let roleOpt = document.querySelector('input[name="role"]:checked');
-            
             if(!id) return alert("Pilih Laga terlebih dahulu!");
             
             currentMatch = matchesData.find(x => String(x.id_match||x.ID_Match) === id);
             activeRole = roleOpt.value;
 
-            // Transisi UI
             document.getElementById('screen-setup').classList.add('hidden');
             document.getElementById('screen-tracker').classList.remove('hidden');
             document.getElementById('screen-tracker').classList.add('flex');
@@ -283,70 +291,54 @@
             let tA = currentMatch.tim_kiri || currentMatch.Tim_Kiri;
             let tB = currentMatch.tim_kanan || currentMatch.Tim_Kanan;
             
-            // Header Info
             document.getElementById('hdr-match-id').innerText = `MATCH ${currentMatch.id_match || currentMatch.ID_Match}`;
             
-            let pA = document.getElementById('panel-teama');
-            let pB = document.getElementById('panel-teamb');
-            let pPoss = document.getElementById('panel-possession');
-            let tBtn = document.getElementById('timer-container');
+            let pA = document.getElementById('panel-teama'); let pB = document.getElementById('panel-teamb');
+            let pPoss = document.getElementById('panel-possession'); let tBtn = document.getElementById('timer-container');
 
-            // Set Nama & Label
-            document.getElementById('name-teama').innerText = tA;
-            document.getElementById('name-teamb').innerText = tB;
-            document.getElementById('lbl-poss-a').innerText = tA;
-            document.getElementById('lbl-poss-b').innerText = tB;
-            document.getElementById('btn-lbl-poss-a').innerText = tA;
-            document.getElementById('btn-lbl-poss-b').innerText = tB;
+            document.getElementById('name-teama').innerText = tA; document.getElementById('name-teamb').innerText = tB;
+            document.getElementById('lbl-poss-a').innerText = tA; document.getElementById('lbl-poss-b').innerText = tB;
+            document.getElementById('btn-lbl-poss-a').innerText = tA; document.getElementById('btn-lbl-poss-b').innerText = tB;
 
-            // Role Engine (Hiding/Showing Panels)
             pA.classList.add('hidden'); pB.classList.add('hidden'); pPoss.classList.add('hidden'); tBtn.classList.add('hidden');
             
             if(activeRole === 'teama') {
-                pA.classList.remove('hidden');
-                document.getElementById('workspace-grid').className = "flex-1 overflow-y-auto p-4 md:p-6 flex justify-center";
-                pA.classList.add('w-full', 'max-w-md');
-                document.getElementById('hdr-role').innerText = "🛡️ OPR. " + tA;
-            } 
-            else if (activeRole === 'teamb') {
-                pB.classList.remove('hidden');
-                document.getElementById('workspace-grid').className = "flex-1 overflow-y-auto p-4 md:p-6 flex justify-center";
-                pB.classList.add('w-full', 'max-w-md');
-                document.getElementById('hdr-role').innerText = "⚔️ OPR. " + tB;
-            }
-            else if (activeRole === 'possession') {
-                pPoss.classList.remove('hidden'); tBtn.classList.remove('hidden');
-                document.getElementById('workspace-grid').className = "flex-1 overflow-y-auto p-4 md:p-6 flex justify-center";
-                pPoss.classList.add('w-full', 'max-w-md');
-                document.getElementById('hdr-role').innerText = "⏱️ OPR. POSSESSION";
-            }
-            else if (activeRole === 'master') {
+                pA.classList.remove('hidden'); document.getElementById('workspace-grid').className = "flex-1 overflow-y-auto p-4 md:p-6 flex justify-center";
+                pA.classList.add('w-full', 'max-w-md'); document.getElementById('hdr-role').innerText = "🛡️ OPR. " + tA;
+            } else if (activeRole === 'teamb') {
+                pB.classList.remove('hidden'); document.getElementById('workspace-grid').className = "flex-1 overflow-y-auto p-4 md:p-6 flex justify-center";
+                pB.classList.add('w-full', 'max-w-md'); document.getElementById('hdr-role').innerText = "⚔️ OPR. " + tB;
+            } else if (activeRole === 'possession') {
+                pPoss.classList.remove('hidden'); tBtn.classList.remove('hidden'); document.getElementById('workspace-grid').className = "flex-1 overflow-y-auto p-4 md:p-6 flex justify-center";
+                pPoss.classList.add('w-full', 'max-w-md'); document.getElementById('hdr-role').innerText = "⏱️ OPR. POSSESSION";
+            } else if (activeRole === 'master') {
                 pA.classList.remove('hidden'); pB.classList.remove('hidden'); pPoss.classList.remove('hidden'); tBtn.classList.remove('hidden');
                 document.getElementById('hdr-role').innerText = "👑 MASTER MODE";
             }
 
-            // Generate Builder Stat Counters
-            const buildCounters = (teamKey) => {
+            // Fungsi Pembangun Tombol +/-
+            const buildCounters = (teamKey, dict) => {
                 let html = '';
-                statKeys.forEach(k => {
+                dict.forEach(k => {
                     html += `
-                    <div class="flex items-center justify-between bg-night border border-hairline p-3 rounded-xl">
-                        <span class="text-[11px] font-bold uppercase text-gray-300 w-1/2">${k.label}</span>
-                        <div class="flex items-center gap-3">
-                            <button onclick="updateStat('${teamKey}', '${k.id}', -1)" class="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/20 active:scale-95 transition-all text-white"><i data-lucide="minus" class="w-4 h-4"></i></button>
-                            <span id="val-${teamKey}-${k.id}" class="text-lg font-black w-6 text-center text-white">0</span>
-                            <button onclick="updateStat('${teamKey}', '${k.id}', 1)" class="w-8 h-8 rounded-full bg-white text-black font-black flex items-center justify-center hover:bg-gray-200 active:scale-95 transition-all"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                    <div class="flex items-center justify-between bg-night border border-hairline p-2.5 rounded-xl">
+                        <span class="text-[10px] sm:text-[11px] font-bold uppercase text-gray-300 w-1/2 flex items-center gap-2"><span class="text-sm">${k.emoji}</span> ${k.label}</span>
+                        <div class="flex items-center gap-2.5">
+                            <button onclick="updateStat('${teamKey}', '${k.key}', -1)" class="w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/20 active:scale-95 transition-all text-white"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
+                            <span id="val-${teamKey}-${k.key}" class="text-lg font-black w-6 text-center text-white">0</span>
+                            <button onclick="updateStat('${teamKey}', '${k.key}', 1)" class="w-7 h-7 rounded-full bg-white text-black font-black flex items-center justify-center hover:bg-gray-200 active:scale-95 transition-all"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
                         </div>
                     </div>`;
                 });
                 return html;
             };
 
-            document.getElementById('stats-grid-a').innerHTML = buildCounters('teamA');
-            document.getElementById('stats-grid-b').innerHTML = buildCounters('teamB');
+            document.getElementById('stats-grid-a').innerHTML = buildCounters('teamA', STAT_DEFS);
+            document.getElementById('stats-grid-b').innerHTML = buildCounters('teamB', STAT_DEFS);
+            document.getElementById('pass-grid-a').innerHTML = buildCounters('teamA', PASS_DEFS);
+            document.getElementById('pass-grid-b').innerHTML = buildCounters('teamB', PASS_DEFS);
             lucide.createIcons();
 
-            // Mulai loop animasi untuk possession
             requestAnimationFrame(timerLoop);
         }
 
@@ -357,28 +349,32 @@
             state[team][stat] += mod;
             if (state[team][stat] < 0) state[team][stat] = 0;
             document.getElementById(`val-${team}-${stat}`).innerText = state[team][stat];
+
+            // Auto-Kalkulasi Akurasi Passing
+            if(stat === 'passSuccess' || stat === 'passFail') {
+                let s = state[team].passSuccess; let f = state[team].passFail;
+                let total = s + f;
+                let acc = total === 0 ? 0 : Math.round((s / total) * 100);
+                document.getElementById(`passacc-${team}`).innerText = `${acc}%`;
+            }
         }
 
         function setPossession(team) {
             state.possession.active = team;
             
-            // Visual Update Buttons
             let bA = document.getElementById('btn-poss-a'); let bN = document.getElementById('btn-poss-n'); let bB = document.getElementById('btn-poss-b');
             [bA, bN, bB].forEach(b => {
                 b.classList.add('opacity-50'); 
-                let dot = b.querySelector('.indicator-dot');
-                dot.className = "w-4 h-4 rounded-full border indicator-dot border-gray-600";
+                b.querySelector('.indicator-dot').className = "w-4 h-4 rounded-full border indicator-dot border-gray-600";
             });
 
             if(team === 'A') { 
                 bA.classList.remove('opacity-50'); 
                 bA.querySelector('.indicator-dot').className = "w-4 h-4 rounded-full bg-blue-500 indicator-dot shadow-[0_0_10px_rgba(59,130,246,0.5)]"; 
-            }
-            else if(team === 'N') { 
+            } else if(team === 'N') { 
                 bN.classList.remove('opacity-50'); 
                 bN.querySelector('.indicator-dot').className = "w-4 h-4 rounded-full bg-gray-500 indicator-dot shadow-[0_0_10px_rgba(107,114,128,0.5)]"; 
-            }
-            else if(team === 'B') { 
+            } else if(team === 'B') { 
                 bB.classList.remove('opacity-50'); 
                 bB.querySelector('.indicator-dot').className = "w-4 h-4 rounded-full bg-red-500 indicator-dot shadow-[0_0_10px_rgba(239,68,68,0.5)]"; 
             }
@@ -387,18 +383,14 @@
 
         function toggleTimer() {
             state.timer.isRunning = !state.timer.isRunning;
-            let icon = document.getElementById('icon-timer');
-            let btn = document.getElementById('btn-timer');
+            let icon = document.getElementById('icon-timer'); let btn = document.getElementById('btn-timer');
             
             if(state.timer.isRunning) {
                 state.timer.lastTick = performance.now();
-                btn.classList.replace('bg-white', 'bg-brand-red');
-                btn.classList.replace('text-black', 'text-white');
-                btn.style.backgroundColor = '#ef4444'; // Red for Stop
-                icon.setAttribute('data-lucide', 'square');
+                btn.classList.replace('bg-white', 'bg-brand-red'); btn.classList.replace('text-black', 'text-white');
+                btn.style.backgroundColor = '#ef4444'; icon.setAttribute('data-lucide', 'square');
             } else {
-                btn.style.backgroundColor = 'white'; // White for Play
-                btn.classList.replace('text-white', 'text-black');
+                btn.style.backgroundColor = 'white'; btn.classList.replace('text-white', 'text-black');
                 icon.setAttribute('data-lucide', 'play');
             }
             lucide.createIcons();
@@ -409,43 +401,33 @@
                 let delta = now - state.timer.lastTick;
                 state.timer.totalMs += delta;
                 
-                // Distribusikan waktu penguasaan
                 if (state.possession.active === 'A') state.possession.timeA_ms += delta;
                 else if (state.possession.active === 'B') state.possession.timeB_ms += delta;
                 else if (state.possession.active === 'N') state.possession.timeN_ms += delta;
 
                 state.timer.lastTick = now;
 
-                // Update teks timer (MM:SS)
                 let totalSec = Math.floor(state.timer.totalMs / 1000);
                 let m = String(Math.floor(totalSec / 60)).padStart(2, '0');
                 let s = String(totalSec % 60).padStart(2, '0');
                 document.getElementById('match-timer').innerText = `${m}:${s}`;
 
-                // Update Bar (Throttled untuk performa)
                 if (totalSec % 1 === 0) updatePossessionUI();
             }
             requestAnimationFrame(timerLoop);
         }
 
         function updatePossessionUI() {
-            let p = state.possession;
-            let total = p.timeA_ms + p.timeB_ms + p.timeN_ms;
-            
-            let pctA = 33, pctN = 34, pctB = 33; // Default
+            let p = state.possession; let total = p.timeA_ms + p.timeB_ms + p.timeN_ms;
+            let pctA = 33, pctN = 34, pctB = 33;
             if (total > 0) {
                 pctA = Math.round((p.timeA_ms / total) * 100);
                 pctB = Math.round((p.timeB_ms / total) * 100);
-                pctN = 100 - (pctA + pctB); // Sisa (In Contest)
+                pctN = 100 - (pctA + pctB);
             }
 
-            document.getElementById('bar-a').style.width = `${pctA}%`;
-            document.getElementById('bar-n').style.width = `${pctN}%`;
-            document.getElementById('bar-b').style.width = `${pctB}%`;
-
-            document.getElementById('pct-a').innerText = `${pctA}%`;
-            document.getElementById('pct-n').innerText = `${pctN}%`;
-            document.getElementById('pct-b').innerText = `${pctB}%`;
+            document.getElementById('bar-a').style.width = `${pctA}%`; document.getElementById('bar-n').style.width = `${pctN}%`; document.getElementById('bar-b').style.width = `${pctB}%`;
+            document.getElementById('pct-a').innerText = `${pctA}%`; document.getElementById('pct-n').innerText = `${pctN}%`; document.getElementById('pct-b').innerText = `${pctB}%`;
         }
 
         // ==============================================
@@ -456,13 +438,10 @@
             btn.disabled = true;
             btn.innerHTML = `<div class="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> <span>Syncing...</span>`;
 
-            // Hitung Ulang Persentase untuk Database
-            let p = state.possession;
-            let total = p.timeA_ms + p.timeB_ms + p.timeN_ms;
+            let p = state.possession; let total = p.timeA_ms + p.timeB_ms + p.timeN_ms;
             let pctA = total > 0 ? Math.round((p.timeA_ms / total) * 100) : 50;
             let pctB = total > 0 ? Math.round((p.timeB_ms / total) * 100) : 50;
 
-            // Bangun Payload berdasarkan Role (Optimistic Sync)
             let payloadData = {
                 id_match: currentMatch.id_match || currentMatch.ID_Match,
                 role: activeRole,
@@ -471,37 +450,20 @@
                 stats: {}
             };
 
-            if(activeRole === 'teama' || activeRole === 'master') {
-                payloadData.stats.teamA = state.teamA;
-            }
-            if(activeRole === 'teamb' || activeRole === 'master') {
-                payloadData.stats.teamB = state.teamB;
-            }
-            if(activeRole === 'possession' || activeRole === 'master') {
-                payloadData.stats.possession = {
-                    a: pctA, b: pctB, n: (100 - (pctA + pctB))
-                };
-            }
+            if(activeRole === 'teama' || activeRole === 'master') payloadData.stats.teamA = state.teamA;
+            if(activeRole === 'teamb' || activeRole === 'master') payloadData.stats.teamB = state.teamB;
+            if(activeRole === 'possession' || activeRole === 'master') payloadData.stats.possession = { a: pctA, b: pctB, n: (100 - (pctA + pctB)) };
 
             try {
-                // Di masa depan Anda tinggal mengatur endpoint Apps Script untuk menangani action 'submit_stat_match'
                 await fetch(API_URL, { 
                     method: 'POST', 
-                    body: JSON.stringify({ 
-                        action: 'submit_stat_match', 
-                        payload: payloadData 
-                    }) 
+                    body: JSON.stringify({ action: 'submit_stat_match', payload: payloadData }) 
                 });
-                
                 let log = document.getElementById('log-status');
-                log.classList.remove('hidden');
-                setTimeout(() => log.classList.add('hidden'), 3000);
-            } catch(e) {
-                alert("Gagal sinkronisasi data!");
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = `<i data-lucide="cloud-upload" class="w-3.5 h-3.5"></i> <span>Sync</span>`;
-                lucide.createIcons();
+                log.classList.remove('hidden'); setTimeout(() => log.classList.add('hidden'), 3000);
+            } catch(e) { alert("Gagal sinkronisasi data!"); } 
+            finally {
+                btn.disabled = false; btn.innerHTML = `<i data-lucide="cloud-upload" class="w-3.5 h-3.5"></i> <span>Sync</span>`; lucide.createIcons();
             }
         }
 
