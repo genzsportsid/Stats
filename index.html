@@ -23,18 +23,20 @@
     <style>
         body { background-color: #0D1512; color: #F5F7F5; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: contain; }
         .hide-scroll::-webkit-scrollbar { display: none; }
-        .stat-btn { transition: all 0.1s; }
-        .stat-btn:active { transform: scale(0.95); }
+        .stat-btn { transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1); }
+        .stat-btn:active { transform: scale(0.85); }
         .loader { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #009A44; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
         .poss-bar { transition: width 0.3s ease-out; }
-        /* Animasi pop saat angka berubah */
-        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.3); color: #009A44; } 100% { transform: scale(1); } }
+        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.4); color: #009A44; } 100% { transform: scale(1); } }
         .animate-pop { animation: pop 0.3s ease-out; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
+    <!-- ========================================== -->
+    <!-- SCREEN 1: SETUP & AUTHENTICATION -->
+    <!-- ========================================== -->
     <div id="screen-setup" class="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 max-w-lg mx-auto w-full">
         <div class="mb-6 text-center">
             <h1 class="text-2xl sm:text-3xl font-black uppercase tracking-widest text-brand-green flex items-center justify-center gap-2">
@@ -82,28 +84,28 @@
                         <input type="radio" name="role" value="teama" class="w-4 h-4 text-brand-green accent-brand-green shrink-0">
                         <div>
                             <span class="block text-[10px] sm:text-[11px] font-bold uppercase text-blue-400 truncate w-32" id="label-role-a">🛡️ Tim Kiri</span>
-                            <span class="block text-[8px] sm:text-[9px] text-gray-500 font-medium">Ofensif & Defensif</span>
+                            <span class="block text-[8px] sm:text-[9px] text-gray-500 font-medium">Panel Tunggal Tim Kiri</span>
                         </div>
                     </label>
                     <label class="flex items-center gap-3 p-3 border border-hairline bg-night rounded-xl cursor-pointer hover:border-brand-green transition-colors">
                         <input type="radio" name="role" value="teamb" class="w-4 h-4 text-brand-green accent-brand-green shrink-0">
                         <div>
                             <span class="block text-[10px] sm:text-[11px] font-bold uppercase text-red-400 truncate w-32" id="label-role-b">⚔️ Tim Kanan</span>
-                            <span class="block text-[8px] sm:text-[9px] text-gray-500 font-medium">Ofensif & Defensif</span>
+                            <span class="block text-[8px] sm:text-[9px] text-gray-500 font-medium">Panel Tunggal Tim Kanan</span>
                         </div>
                     </label>
                     <label class="flex items-center gap-3 p-3 border border-hairline bg-night rounded-xl cursor-pointer hover:border-brand-green transition-colors">
                         <input type="radio" name="role" value="twoteams" class="w-4 h-4 text-brand-green accent-brand-green shrink-0">
                         <div>
                             <span class="block text-[10px] sm:text-[11px] font-bold uppercase text-purple-400">⚖️ Operator 2 Tim</span>
-                            <span class="block text-[8px] sm:text-[9px] text-gray-500 font-medium">Pegang Kiri & Kanan (Tanpa Timer)</span>
+                            <span class="block text-[8px] sm:text-[9px] text-gray-500 font-medium">H2H View (Tanpa Timer)</span>
                         </div>
                     </label>
                     <label class="flex items-center gap-3 p-3 border border-hairline bg-night rounded-xl cursor-pointer hover:border-brand-gold transition-colors sm:col-span-2">
                         <input type="radio" name="role" value="master" class="w-4 h-4 text-brand-gold accent-brand-gold shrink-0">
                         <div>
                             <span class="block text-[10px] sm:text-[11px] font-bold uppercase text-brand-gold">👑 Mode Master (Semua)</span>
-                            <span class="block text-[8px] sm:text-[9px] text-gray-500 font-medium">Pegang Timer, Kiri & Kanan sekaligus</span>
+                            <span class="block text-[8px] sm:text-[9px] text-gray-500 font-medium">Kendalikan semua panel secara H2H</span>
                         </div>
                     </label>
                 </div>
@@ -115,8 +117,12 @@
         </div>
     </div>
 
+    <!-- ========================================== -->
+    <!-- SCREEN 2: MAIN TRACKER WORKSPACE -->
+    <!-- ========================================== -->
     <div id="screen-tracker" class="hidden flex-1 flex flex-col h-screen overflow-hidden">
         
+        <!-- HEADER -->
         <header class="bg-panel border-b border-hairline p-3 md:p-4 flex items-center justify-between shrink-0 z-20 shadow-md">
             <div class="flex flex-col max-w-[40%]">
                 <span id="hdr-match-id" class="text-[9px] font-bold text-gray-500 uppercase tracking-widest truncate">MATCH</span>
@@ -126,99 +132,26 @@
             <div class="flex items-center gap-2 sm:gap-4">
                 <div id="timer-container" class="hidden flex items-center gap-2 bg-night border border-hairline px-2 sm:px-3 py-1.5 rounded-lg">
                     <span id="match-timer" class="text-base sm:text-xl font-black tracking-tighter w-12 sm:w-16 text-center font-mono">00:00</span>
-                    <button id="btn-timer" onclick="toggleTimer()" class="w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-full bg-white text-black flex items-center justify-center hover:bg-brand-green hover:text-white transition-colors">
+                    <button id="btn-timer" onclick="toggleTimer()" class="stat-btn w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-full bg-white text-black flex items-center justify-center hover:bg-brand-green hover:text-white transition-colors">
                         <i data-lucide="play" id="icon-timer" class="w-3 h-3 sm:w-4 sm:h-4 ml-0.5"></i>
                     </button>
                 </div>
                 
-                <button onclick="submitStatsToDB()" id="btn-sync" class="bg-brand-green/20 text-brand-green border border-brand-green/50 px-3 py-2 rounded-lg text-[9px] sm:text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 hover:bg-brand-green hover:text-white transition-colors">
+                <button onclick="submitStatsToDB()" id="btn-sync" class="stat-btn bg-brand-green/20 text-brand-green border border-brand-green/50 px-3 py-2 rounded-lg text-[9px] sm:text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 hover:bg-brand-green hover:text-white transition-colors">
                     <i data-lucide="cloud-upload" class="w-3.5 h-3.5 shrink-0"></i> <span class="hidden sm:inline">Sync Data</span><span class="sm:hidden">Sync</span>
                 </button>
-                <button onclick="hardReset()" class="bg-red-500/10 text-red-500 border border-red-500/30 px-2.5 py-2 rounded-lg hover:bg-red-500 hover:text-white transition-colors" title="Keluar & Hapus Sesi">
+                <button onclick="hardReset()" class="stat-btn bg-red-500/10 text-red-500 border border-red-500/30 px-2.5 py-2 rounded-lg hover:bg-red-500 hover:text-white transition-colors" title="Keluar & Hapus Sesi">
                     <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
                 </button>
             </div>
         </header>
 
-        <div id="workspace-grid" class="flex-1 overflow-y-auto p-3 sm:p-6 grid gap-4 sm:gap-6">
-            
-            <div id="panel-teama" class="hidden bg-panel border border-hairline rounded-2xl overflow-hidden shadow-lg pb-4 w-full">
-                <div class="bg-blue-900/20 border-b border-blue-900/30 p-3 sm:p-4 text-center">
-                    <h2 id="name-teama" class="text-base sm:text-lg font-black uppercase tracking-widest text-blue-400 truncate px-2">TIM KIRI</h2>
-                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Statistik Utama</span>
-                </div>
-                <div id="stats-grid-a" class="p-3 sm:p-4 grid grid-cols-1 gap-2.5"></div>
-                <div class="px-3 sm:px-4 mt-2">
-                    <div class="bg-blue-900/10 border border-blue-900/30 p-2.5 sm:p-3 rounded-xl mb-3 flex justify-between items-center">
-                        <span class="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Akurasi Passing</span>
-                        <span id="passacc-teama" class="text-lg sm:text-xl font-black text-white font-mono">0%</span>
-                    </div>
-                    <div id="pass-grid-a" class="grid grid-cols-1 gap-2.5"></div>
-                </div>
-            </div>
-
-            <div id="panel-possession" class="hidden bg-panel border border-hairline rounded-2xl overflow-hidden shadow-lg w-full">
-                <div class="bg-gray-800/20 border-b border-hairline p-3 sm:p-4 text-center">
-                    <h2 class="text-base sm:text-lg font-black uppercase tracking-widest text-primary">BALL POSSESSION</h2>
-                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Ketuk Timer Untuk Memulai</span>
-                </div>
-                
-                <div class="p-4 sm:p-6 flex flex-col items-center gap-6 sm:gap-8">
-                    <div class="w-full flex h-4 sm:h-5 rounded-full overflow-hidden bg-night border border-hairline relative">
-                        <div id="bar-a" class="poss-bar h-full bg-blue-500" style="width: 33.3%;"></div>
-                        <div id="bar-n" class="poss-bar h-full bg-gray-500" style="width: 33.3%;"></div>
-                        <div id="bar-b" class="poss-bar h-full bg-red-500" style="width: 33.4%;"></div>
-                    </div>
-                    
-                    <div class="flex w-full justify-between px-1 sm:px-2">
-                        <div class="text-center w-1/3">
-                            <span id="pct-a" class="block text-xl sm:text-2xl font-black text-blue-400">33%</span>
-                            <span id="lbl-poss-a" class="text-[8px] sm:text-[9px] font-bold text-gray-500 uppercase truncate block">TIM A</span>
-                        </div>
-                        <div class="text-center w-1/3">
-                            <span id="pct-n" class="block text-xl sm:text-2xl font-black text-gray-400">33%</span>
-                            <span class="text-[8px] sm:text-[9px] font-bold text-gray-500 uppercase block">NETRAL</span>
-                        </div>
-                        <div class="text-center w-1/3">
-                            <span id="pct-b" class="block text-xl sm:text-2xl font-black text-red-400">34%</span>
-                            <span id="lbl-poss-b" class="text-[8px] sm:text-[9px] font-bold text-gray-500 uppercase truncate block">TIM B</span>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 w-full gap-2 sm:gap-3">
-                        <button onclick="setPossession('A')" id="btn-poss-a" class="stat-btn p-3 sm:p-4 rounded-xl border border-hairline bg-night text-left flex justify-between items-center opacity-50">
-                            <span class="font-bold text-xs sm:text-sm uppercase text-gray-300 truncate pr-2" id="btn-lbl-poss-a">Kuasai Bola</span>
-                            <div class="w-4 h-4 shrink-0 rounded-full border border-blue-500 indicator-dot"></div>
-                        </button>
-                        <button onclick="setPossession('N')" id="btn-poss-n" class="stat-btn p-3 sm:p-4 rounded-xl border border-hairline bg-night text-left flex justify-between items-center">
-                            <span class="font-bold text-xs sm:text-sm uppercase text-gray-300">In Contest (Netral)</span>
-                            <div class="w-4 h-4 shrink-0 rounded-full bg-gray-500 indicator-dot shadow-[0_0_10px_rgba(107,114,128,0.5)]"></div>
-                        </button>
-                        <button onclick="setPossession('B')" id="btn-poss-b" class="stat-btn p-3 sm:p-4 rounded-xl border border-hairline bg-night text-left flex justify-between items-center opacity-50">
-                            <span class="font-bold text-xs sm:text-sm uppercase text-gray-300 truncate pr-2" id="btn-lbl-poss-b">Kuasai Bola</span>
-                            <div class="w-4 h-4 shrink-0 rounded-full border border-red-500 indicator-dot"></div>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div id="panel-teamb" class="hidden bg-panel border border-hairline rounded-2xl overflow-hidden shadow-lg pb-4 w-full">
-                <div class="bg-red-900/20 border-b border-red-900/30 p-3 sm:p-4 text-center">
-                    <h2 id="name-teamb" class="text-base sm:text-lg font-black uppercase tracking-widest text-red-400 truncate px-2">TIM KANAN</h2>
-                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Statistik Utama</span>
-                </div>
-                <div id="stats-grid-b" class="p-3 sm:p-4 grid grid-cols-1 gap-2.5"></div>
-                <div class="px-3 sm:px-4 mt-2">
-                    <div class="bg-red-900/10 border border-red-900/30 p-2.5 sm:p-3 rounded-xl mb-3 flex justify-between items-center">
-                        <span class="text-[10px] font-bold text-red-400 uppercase tracking-widest">Akurasi Passing</span>
-                        <span id="passacc-teamb" class="text-lg sm:text-xl font-black text-white font-mono">0%</span>
-                    </div>
-                    <div id="pass-grid-b" class="grid grid-cols-1 gap-2.5"></div>
-                </div>
-            </div>
-            
+        <!-- DYNAMIC WORKSPACE GRID (DI-INJEKSI JS) -->
+        <div id="workspace-container" class="flex-1 overflow-y-auto p-2 sm:p-4 md:p-6 bg-night">
+            <!-- Isi akan digenerate secara otomatis oleh JS agar layout sempurna -->
         </div>
         
+        <!-- NOTIFIKASI SYNC -->
         <div id="log-status" class="bg-brand-green text-white text-center text-[10px] sm:text-xs font-bold uppercase tracking-widest p-2 hidden shadow-[0_-5px_15px_rgba(0,154,68,0.3)] z-50">
             Data Berhasil Diunggah!
         </div>
@@ -227,7 +160,7 @@
     <script>
         lucide.createIcons();
         const API_URL = "https://script.google.com/macros/s/AKfycbzAeXyhA-VIDTJQfmOnPfv0o9NZQXJg9PIk1r1FpSWeqH3TvInjK6QnhONhLieHiqY/exec";
-        const STORAGE_KEY = 'TSL_StatMaker_V2';
+        const STORAGE_KEY = 'TSL_StatMaker_V3_UX';
         
         let matchesData = [];
         let currentMatch = null;
@@ -235,14 +168,14 @@
 
         const STAT_DEFS = [
             { key: 'goals',       label: 'Gol', emoji: '⚽' },
-            { key: 'shotsOn',     label: 'SOT (Tepat Sasaran)', emoji: '🎯' },
-            { key: 'shotsOff',    label: 'Tembakan Melenceng', emoji: '↗️' },
-            { key: 'corners',     label: 'Tendangan Sudut', emoji: '⛳' },
+            { key: 'shotsOn',     label: 'Tepat Sasaran', emoji: '🎯' },
+            { key: 'shotsOff',    label: 'Melenceng', emoji: '↗️' },
+            { key: 'corners',     label: 'Corner', emoji: '⛳' },
             { key: 'offsides',    label: 'Offside', emoji: '🚩' },
-            { key: 'yellowCards', label: 'Kartu Kuning', emoji: '🟨' },
-            { key: 'redCards',    label: 'Kartu Merah', emoji: '🟥' },
+            { key: 'yellowCards', label: 'K. Kuning', emoji: '🟨' },
+            { key: 'redCards',    label: 'K. Merah', emoji: '🟥' },
             { key: 'fouls',       label: 'Pelanggaran', emoji: '🛑' },
-            { key: 'saves',       label: 'Peny. Kiper', emoji: '🧤' }
+            { key: 'saves',       label: 'Penyelamatan', emoji: '🧤' }
         ];
         const PASS_DEFS = [
             { key: 'passSuccess', label: 'Umpan Sukses', emoji: '✅' },
@@ -254,8 +187,7 @@
         }
 
         let state = {
-            teamA: createEmptyStats(),
-            teamB: createEmptyStats(),
+            teamA: createEmptyStats(), teamB: createEmptyStats(),
             possession: { active: 'N', timeA_ms: 0, timeB_ms: 0, timeN_ms: 0 },
             timer: { isRunning: false, totalMs: 0, lastTick: 0 }
         };
@@ -264,35 +196,24 @@
         // FITUR ANTI-DATA LOSS (LOCAL STORAGE)
         // ==============================================
         function saveLocal() {
-            let data = { match: currentMatch, role: activeRole, state: state };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ match: currentMatch, role: activeRole, state: state }));
         }
 
         function checkLocalSession() {
-            let raw = localStorage.getItem(STORAGE_KEY);
-            if(raw) {
-                document.getElementById('resume-container').classList.remove('hidden');
-            }
+            if(localStorage.getItem(STORAGE_KEY)) document.getElementById('resume-container').classList.remove('hidden');
         }
 
         function resumeSession() {
             let raw = localStorage.getItem(STORAGE_KEY);
             if(raw) {
-                let data = JSON.parse(raw);
-                currentMatch = data.match;
-                activeRole = data.role;
-                state = data.state;
-                
-                // Pastikan timer di-pause saat dilanjutkan (mencegah loncatan waktu drastis)
-                state.timer.isRunning = false; 
-
+                let data = JSON.parse(raw); currentMatch = data.match; activeRole = data.role; state = data.state;
+                state.timer.isRunning = false; // Auto pause upon resume
                 document.getElementById('screen-setup').classList.add('hidden');
-                document.getElementById('screen-tracker').classList.remove('hidden');
-                document.getElementById('screen-tracker').classList.add('flex');
+                document.getElementById('screen-tracker').classList.remove('hidden'); document.getElementById('screen-tracker').classList.add('flex');
                 
                 buildWorkspace();
                 
-                // Restore UI Values
+                // Trigger refresh UI
                 STAT_DEFS.forEach(k => { updateStatUI('teamA', k.key); updateStatUI('teamB', k.key); });
                 PASS_DEFS.forEach(k => { updateStatUI('teamA', k.key); updateStatUI('teamB', k.key); });
                 setPossession(state.possession.active);
@@ -300,17 +221,11 @@
         }
 
         function clearSession() {
-            if(confirm('Yakin ingin menghapus sesi sebelumnya? Data yang belum di-Sync akan hilang selamanya.')) {
-                localStorage.removeItem(STORAGE_KEY);
-                document.getElementById('resume-container').classList.add('hidden');
-            }
+            if(confirm('Yakin ingin menghapus sesi sebelumnya?')) { localStorage.removeItem(STORAGE_KEY); document.getElementById('resume-container').classList.add('hidden'); }
         }
 
         function hardReset() {
-            if(confirm('Keluar dari terminal? Pastikan Anda sudah Sync Data.')) {
-                localStorage.removeItem(STORAGE_KEY);
-                window.location.reload();
-            }
+            if(confirm('Keluar dari terminal? Pastikan Anda sudah Sync Data.')) { localStorage.removeItem(STORAGE_KEY); window.location.reload(); }
         }
 
         // ==============================================
@@ -321,117 +236,191 @@
             document.getElementById('loading-setup').classList.remove('hidden');
             let select = document.getElementById('select-match');
             try {
-                let res = await fetch(API_URL + "?sheet=Jadwal");
-                matchesData = await res.json();
-                
+                let res = await fetch(API_URL + "?sheet=Jadwal"); matchesData = await res.json();
                 select.innerHTML = '<option value="">-- Pilih Pertandingan --</option>';
-                matchesData.forEach(m => { 
-                    let idm = m.id_match || m.ID_Match; 
-                    if(idm) select.innerHTML += `<option value="${idm}">${m.tim_kiri || m.Tim_Kiri} VS ${m.tim_kanan || m.Tim_Kanan} (${idm})</option>`; 
-                });
+                matchesData.forEach(m => { let idm = m.id_match || m.ID_Match; if(idm) select.innerHTML += `<option value="${idm}">${m.tim_kiri || m.Tim_Kiri} VS ${m.tim_kanan || m.Tim_Kanan} (${idm})</option>`; });
             } catch(e) { select.innerHTML = '<option value="">Gagal Memuat. Cek Koneksi.</option>'; } 
             finally { document.getElementById('loading-setup').classList.add('hidden'); }
         }
 
         function updateSetupTeams() {
-            let id = document.getElementById('select-match').value;
-            let m = matchesData.find(x => String(x.id_match||x.ID_Match) === id);
+            let id = document.getElementById('select-match').value; let m = matchesData.find(x => String(x.id_match||x.ID_Match) === id);
             if(m) {
                 document.getElementById('label-role-a').innerText = `🛡️ ${(m.tim_kiri||m.Tim_Kiri)}`;
                 document.getElementById('label-role-b').innerText = `⚔️ ${(m.tim_kanan||m.Tim_Kanan)}`;
             } else {
-                document.getElementById('label-role-a').innerText = `🛡️ Tim Kiri`;
-                document.getElementById('label-role-b').innerText = `⚔️ Tim Kanan`;
+                document.getElementById('label-role-a').innerText = `🛡️ Tim Kiri`; document.getElementById('label-role-b').innerText = `⚔️ Tim Kanan`;
             }
         }
 
         function startSession() {
-            let id = document.getElementById('select-match').value;
-            let roleOpt = document.querySelector('input[name="role"]:checked');
+            let id = document.getElementById('select-match').value; let roleOpt = document.querySelector('input[name="role"]:checked');
             if(!id) return alert("Pilih Laga terlebih dahulu!");
             
-            currentMatch = matchesData.find(x => String(x.id_match||x.ID_Match) === id);
-            activeRole = roleOpt.value;
+            currentMatch = matchesData.find(x => String(x.id_match||x.ID_Match) === id); activeRole = roleOpt.value;
             state = { teamA: createEmptyStats(), teamB: createEmptyStats(), possession: { active: 'N', timeA_ms: 0, timeB_ms: 0, timeN_ms: 0 }, timer: { isRunning: false, totalMs: 0, lastTick: 0 } };
             
             saveLocal();
-
             document.getElementById('screen-setup').classList.add('hidden');
-            document.getElementById('screen-tracker').classList.remove('hidden');
-            document.getElementById('screen-tracker').classList.add('flex');
+            document.getElementById('screen-tracker').classList.remove('hidden'); document.getElementById('screen-tracker').classList.add('flex');
 
             buildWorkspace();
         }
 
         // ==============================================
-        // BUILD WORKSPACE (RESPONSIVE GRID)
+        // BUILD WORKSPACE (H2H UX APPROACH)
         // ==============================================
         function buildWorkspace() {
-            let tA = currentMatch.tim_kiri || currentMatch.Tim_Kiri;
-            let tB = currentMatch.tim_kanan || currentMatch.Tim_Kanan;
-            
+            let tA = currentMatch.tim_kiri || currentMatch.Tim_Kiri; let tB = currentMatch.tim_kanan || currentMatch.Tim_Kanan;
             document.getElementById('hdr-match-id').innerText = `MATCH ${currentMatch.id_match || currentMatch.ID_Match}`;
             
-            let pA = document.getElementById('panel-teama'); let pB = document.getElementById('panel-teamb');
-            let pPoss = document.getElementById('panel-possession'); let tBtn = document.getElementById('timer-container');
-            let wg = document.getElementById('workspace-grid');
+            let wg = document.getElementById('workspace-container');
+            wg.innerHTML = ''; // Bersihkan kontainer
+            
+            let tBtn = document.getElementById('timer-container'); tBtn.classList.add('hidden');
 
-            document.getElementById('name-teama').innerText = tA; document.getElementById('name-teamb').innerText = tB;
-            document.getElementById('lbl-poss-a').innerText = tA; document.getElementById('lbl-poss-b').innerText = tB;
-            document.getElementById('btn-lbl-poss-a').innerText = tA; document.getElementById('btn-lbl-poss-b').innerText = tB;
+            // --- KOMPONEN: POSSESSION PANEL ---
+            const renderPossessionPanel = () => {
+                return `
+                <div class="bg-panel border border-hairline rounded-2xl overflow-hidden shadow-lg w-full max-w-4xl mx-auto mb-6">
+                    <div class="bg-gray-800/20 border-b border-hairline p-3 sm:p-4 text-center">
+                        <h2 class="text-sm sm:text-lg font-black uppercase tracking-widest text-primary">BALL POSSESSION</h2>
+                    </div>
+                    <div class="p-4 sm:p-6 flex flex-col items-center gap-6">
+                        <!-- Baris Tombol Besar -->
+                        <div class="flex w-full justify-between items-center gap-2 sm:gap-4">
+                            <button onclick="setPossession('A')" id="btn-poss-a" class="stat-btn flex-1 bg-night border border-hairline p-4 sm:p-6 rounded-2xl flex flex-col items-center justify-center gap-2 opacity-50 transition-all">
+                                <div class="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-blue-500 indicator-dot"></div>
+                                <span class="text-[10px] sm:text-xs font-bold text-gray-400 uppercase text-center line-clamp-2 leading-tight">${tA}</span>
+                            </button>
+                            <button onclick="setPossession('N')" id="btn-poss-n" class="stat-btn flex-1 bg-night border border-hairline p-4 sm:p-6 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all">
+                                <div class="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gray-500 shadow-[0_0_15px_rgba(107,114,128,0.5)] indicator-dot"></div>
+                                <span class="text-[10px] sm:text-xs font-bold text-white uppercase text-center leading-tight">NETRAL</span>
+                            </button>
+                            <button onclick="setPossession('B')" id="btn-poss-b" class="stat-btn flex-1 bg-night border border-hairline p-4 sm:p-6 rounded-2xl flex flex-col items-center justify-center gap-2 opacity-50 transition-all">
+                                <div class="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-red-500 indicator-dot"></div>
+                                <span class="text-[10px] sm:text-xs font-bold text-gray-400 uppercase text-center line-clamp-2 leading-tight">${tB}</span>
+                            </button>
+                        </div>
+                        <!-- Visual Bar Bawah -->
+                        <div class="w-full flex h-3 sm:h-4 rounded-full overflow-hidden bg-night border border-hairline relative">
+                            <div id="bar-a" class="poss-bar h-full bg-blue-500" style="width: 33.3%;"></div>
+                            <div id="bar-n" class="poss-bar h-full bg-gray-500" style="width: 33.3%;"></div>
+                            <div id="bar-b" class="poss-bar h-full bg-red-500" style="width: 33.4%;"></div>
+                        </div>
+                        <div class="flex w-full justify-between px-1 text-[10px] sm:text-xs font-bold text-gray-400">
+                            <span id="pct-a" class="w-1/3 text-left text-blue-400">33%</span>
+                            <span id="pct-n" class="w-1/3 text-center text-gray-500">33%</span>
+                            <span id="pct-b" class="w-1/3 text-right text-red-400">34%</span>
+                        </div>
+                    </div>
+                </div>`;
+            };
 
-            pA.classList.add('hidden'); pB.classList.add('hidden'); pPoss.classList.add('hidden'); tBtn.classList.add('hidden');
-            pA.classList.remove('max-w-md', 'mx-auto'); pB.classList.remove('max-w-md', 'mx-auto'); pPoss.classList.remove('max-w-md', 'mx-auto');
-
-            // SMART RESPONSIVE ROLE LOGIC
-            if(activeRole === 'teama') {
-                pA.classList.remove('hidden'); wg.className = "flex-1 overflow-y-auto p-3 sm:p-6 flex justify-center items-start";
-                pA.classList.add('max-w-md', 'mx-auto'); document.getElementById('hdr-role').innerText = "🛡️ OPR. " + tA;
-            } else if (activeRole === 'teamb') {
-                pB.classList.remove('hidden'); wg.className = "flex-1 overflow-y-auto p-3 sm:p-6 flex justify-center items-start";
-                pB.classList.add('max-w-md', 'mx-auto'); document.getElementById('hdr-role').innerText = "⚔️ OPR. " + tB;
-            } else if (activeRole === 'possession') {
-                pPoss.classList.remove('hidden'); tBtn.classList.remove('hidden'); wg.className = "flex-1 overflow-y-auto p-3 sm:p-6 flex justify-center items-start";
-                pPoss.classList.add('max-w-md', 'mx-auto'); document.getElementById('hdr-role').innerText = "⏱️ PENGUASAAN";
-            } else if (activeRole === 'twoteams') {
-                pA.classList.remove('hidden'); pB.classList.remove('hidden'); 
-                wg.className = "flex-1 overflow-y-auto p-3 sm:p-6 grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 items-start max-w-5xl mx-auto w-full";
-                document.getElementById('hdr-role').innerText = "⚖️ OP. 2 TIM";
-            } else if (activeRole === 'master') {
-                pA.classList.remove('hidden'); pB.classList.remove('hidden'); pPoss.classList.remove('hidden'); tBtn.classList.remove('hidden');
-                wg.className = "flex-1 overflow-y-auto p-3 sm:p-6 grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3 items-start max-w-7xl mx-auto w-full";
-                document.getElementById('hdr-role').innerText = "👑 MASTER";
-            }
-
-            // Fungsi Pembangun Tombol +/- (Anti Penyok di Mobile)
-            const buildCounters = (teamKey, dict) => {
-                let html = '';
-                dict.forEach(k => {
+            // --- KOMPONEN: SINGLE TEAM PANEL ---
+            const renderSinglePanel = (teamKey, teamName, colorClass, borderClass, bgClass) => {
+                let html = `<div class="bg-panel border border-hairline rounded-2xl overflow-hidden shadow-lg w-full max-w-md mx-auto mb-6">
+                    <div class="${bgClass} border-b border-hairline p-3 sm:p-4 text-center">
+                        <h2 class="text-sm sm:text-lg font-black uppercase tracking-widest ${colorClass}">${teamName}</h2>
+                    </div>
+                    <div class="p-3 sm:p-4 space-y-2.5">`;
+                
+                let combinedDefs = [...STAT_DEFS, ...PASS_DEFS];
+                combinedDefs.forEach(k => {
                     html += `
                     <div class="flex items-center justify-between bg-night border border-hairline p-2 sm:p-3 rounded-xl">
-                        <div class="flex items-center gap-1.5 sm:gap-2 w-1/2">
-                            <span class="text-sm sm:text-base">${k.emoji}</span>
-                            <span class="text-[9px] sm:text-[11px] font-bold uppercase text-gray-300 leading-tight">${k.label}</span>
+                        <div class="flex items-center gap-2 w-1/2">
+                            <span class="text-base sm:text-lg">${k.emoji}</span>
+                            <span class="text-[10px] sm:text-[11px] font-bold uppercase text-gray-300 leading-tight">${k.label}</span>
                         </div>
-                        <div class="flex items-center justify-end gap-1.5 sm:gap-3 w-1/2">
-                            <button onclick="updateStat('${teamKey}', '${k.key}', -1)" class="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/20 active:scale-95 transition-all text-white"><i data-lucide="minus" class="w-4 h-4"></i></button>
+                        <div class="flex items-center justify-end gap-2 w-1/2">
+                            <button onclick="updateStat('${teamKey}', '${k.key}', -1)" class="stat-btn w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-full bg-night border border-hairline flex items-center justify-center text-gray-500 hover:text-white"><i data-lucide="minus" class="w-4 h-4"></i></button>
                             <span id="val-${teamKey}-${k.key}" class="text-xl sm:text-2xl font-black w-8 sm:w-10 text-center text-white tabular-nums">0</span>
-                            <button onclick="updateStat('${teamKey}', '${k.key}', 1)" class="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full bg-white text-black font-black flex items-center justify-center hover:bg-gray-200 active:scale-95 transition-all"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                            <button onclick="updateStat('${teamKey}', '${k.key}', 1)" class="stat-btn w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-full ${colorClass.replace('text-','bg-')}/20 ${colorClass} font-black flex items-center justify-center border border-${colorClass.replace('text-','')} shadow-[0_0_10px_currentColor]"><i data-lucide="plus" class="w-5 h-5"></i></button>
                         </div>
                     </div>`;
                 });
+
+                // Inject Passing Acc Text
+                html += `<div class="flex justify-between items-center bg-night border border-hairline p-3 rounded-xl mt-4">
+                            <span class="text-[10px] font-bold ${colorClass} uppercase tracking-widest">Akurasi Passing</span>
+                            <span id="passacc-${teamKey}" class="text-xl font-black text-white font-mono">0%</span>
+                         </div></div></div>`;
                 return html;
             };
 
-            document.getElementById('stats-grid-a').innerHTML = buildCounters('teamA', STAT_DEFS);
-            document.getElementById('stats-grid-b').innerHTML = buildCounters('teamB', STAT_DEFS);
-            document.getElementById('pass-grid-a').innerHTML = buildCounters('teamA', PASS_DEFS);
-            document.getElementById('pass-grid-b').innerHTML = buildCounters('teamB', PASS_DEFS);
-            lucide.createIcons();
+            // --- KOMPONEN: H2H UNIFIED PANEL (Untuk 2 Tim / Master) ---
+            const renderUnifiedPanel = () => {
+                let html = `<div class="bg-panel border border-hairline rounded-2xl overflow-hidden shadow-lg w-full max-w-4xl mx-auto mb-6">
+                    <div class="flex justify-between items-center bg-gray-800/20 border-b border-hairline p-3 sm:p-4">
+                        <h2 class="w-2/5 text-left text-xs sm:text-base font-black uppercase tracking-widest text-blue-400 truncate pr-2">${tA}</h2>
+                        <span class="w-1/5 text-center text-[8px] sm:text-[10px] font-bold text-gray-500 uppercase tracking-widest bg-night px-2 py-1 rounded-full border border-hairline">H2H STATS</span>
+                        <h2 class="w-2/5 text-right text-xs sm:text-base font-black uppercase tracking-widest text-red-400 truncate pl-2">${tB}</h2>
+                    </div>
+                    <div class="p-2 sm:p-4 space-y-2">`;
+                
+                let combinedDefs = [...STAT_DEFS, ...PASS_DEFS];
+                combinedDefs.forEach(k => {
+                    html += `
+                    <div class="flex items-center justify-between bg-night border border-hairline p-2 sm:p-3 rounded-xl">
+                        <!-- TIM KIRI (A) -->
+                        <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+                            <button onclick="updateStat('teamA', '${k.key}', -1)" class="stat-btn w-8 h-8 sm:w-10 sm:h-10 bg-panel border border-hairline rounded-full flex justify-center items-center text-gray-500 hover:text-white shrink-0"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
+                            <span id="val-teamA-${k.key}" class="w-6 sm:w-8 text-center text-lg sm:text-xl font-black text-white shrink-0 tabular-nums">0</span>
+                            <button onclick="updateStat('teamA', '${k.key}', 1)" class="stat-btn w-10 h-10 sm:w-12 sm:h-12 bg-blue-600 rounded-full flex justify-center items-center text-white shadow-[0_4px_15px_rgba(37,99,235,0.4)] shrink-0"><i data-lucide="plus" class="w-4 h-4 sm:w-5 sm:h-5"></i></button>
+                        </div>
+                        <!-- LABEL STAT TENGAH -->
+                        <div class="flex-1 flex flex-col items-center justify-center text-center px-1 overflow-hidden">
+                            <span class="text-sm sm:text-base mb-0.5">${k.emoji}</span>
+                            <span class="text-[7px] sm:text-[9px] font-bold text-gray-400 uppercase leading-tight truncate w-full">${k.label}</span>
+                        </div>
+                        <!-- TIM KANAN (B) -->
+                        <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+                            <button onclick="updateStat('teamB', '${k.key}', 1)" class="stat-btn w-10 h-10 sm:w-12 sm:h-12 bg-red-600 rounded-full flex justify-center items-center text-white shadow-[0_4px_15px_rgba(220,38,38,0.4)] shrink-0"><i data-lucide="plus" class="w-4 h-4 sm:w-5 sm:h-5"></i></button>
+                            <span id="val-teamB-${k.key}" class="w-6 sm:w-8 text-center text-lg sm:text-xl font-black text-white shrink-0 tabular-nums">0</span>
+                            <button onclick="updateStat('teamB', '${k.key}', -1)" class="stat-btn w-8 h-8 sm:w-10 sm:h-10 bg-panel border border-hairline rounded-full flex justify-center items-center text-gray-500 hover:text-white shrink-0"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
+                        </div>
+                    </div>`;
+                });
 
+                // Passing Acc Row (Khusus H2H)
+                html += `
+                    <div class="flex items-center justify-between bg-night border border-hairline p-3 rounded-xl mt-4">
+                        <span id="passacc-teamA" class="w-[30%] text-left text-lg sm:text-xl font-black text-blue-400 font-mono">0%</span>
+                        <span class="w-[40%] text-center text-[8px] sm:text-[10px] font-bold text-gray-500 uppercase tracking-widest">AKURASI PASSING</span>
+                        <span id="passacc-teamB" class="w-[30%] text-right text-lg sm:text-xl font-black text-red-400 font-mono">0%</span>
+                    </div></div></div>`;
+                return html;
+            };
+
+            // RENDER BERDASARKAN ROLE
+            if(activeRole === 'teama') {
+                document.getElementById('hdr-role').innerText = "🛡️ OPR. " + tA;
+                wg.innerHTML = renderSinglePanel('teamA', tA, 'text-blue-400', 'border-blue-900', 'bg-blue-900/20');
+            } 
+            else if (activeRole === 'teamb') {
+                document.getElementById('hdr-role').innerText = "⚔️ OPR. " + tB;
+                wg.innerHTML = renderSinglePanel('teamB', tB, 'text-red-400', 'border-red-900', 'bg-red-900/20');
+            } 
+            else if (activeRole === 'possession') {
+                document.getElementById('hdr-role').innerText = "⏱️ PENGUASAAN";
+                tBtn.classList.remove('hidden');
+                wg.innerHTML = renderPossessionPanel();
+            } 
+            else if (activeRole === 'twoteams') {
+                document.getElementById('hdr-role').innerText = "⚖️ OP. 2 TIM";
+                wg.innerHTML = renderUnifiedPanel();
+            } 
+            else if (activeRole === 'master') {
+                document.getElementById('hdr-role').innerText = "👑 MASTER";
+                tBtn.classList.remove('hidden');
+                wg.innerHTML = renderPossessionPanel() + renderUnifiedPanel();
+            }
+
+            lucide.createIcons();
             requestAnimationFrame(timerLoop);
             
-            // Render UI jika ini hasil Resume
+            // Render ulang nilai UI jika ini hasil Resume
             let curMin = Math.floor(state.timer.totalMs / 60000).toString().padStart(2, '0');
             let curSec = Math.floor((state.timer.totalMs % 60000) / 1000).toString().padStart(2, '0');
             document.getElementById('match-timer').innerText = `${curMin}:${curSec}`;
@@ -457,11 +446,9 @@
                 el.classList.add('animate-pop');
             }
 
-            // Auto-Kalkulasi Akurasi Passing
             if(stat === 'passSuccess' || stat === 'passFail') {
                 let s = state[team].passSuccess; let f = state[team].passFail;
-                let total = s + f;
-                let acc = total === 0 ? 0 : Math.round((s / total) * 100);
+                let acc = (s+f) === 0 ? 0 : Math.round((s / (s+f)) * 100);
                 let accEl = document.getElementById(`passacc-${team}`);
                 if(accEl) accEl.innerText = `${acc}%`;
             }
@@ -474,19 +461,23 @@
             [bA, bN, bB].forEach(b => {
                 if(b) {
                     b.classList.add('opacity-50'); 
-                    b.querySelector('.indicator-dot').className = "w-4 h-4 shrink-0 rounded-full border indicator-dot border-gray-600";
+                    b.querySelector('.indicator-dot').className = "w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 indicator-dot border-gray-600";
+                    b.querySelector('span').classList.remove('text-white'); b.querySelector('span').classList.add('text-gray-400');
                 }
             });
 
             if(team === 'A' && bA) { 
                 bA.classList.remove('opacity-50'); 
-                bA.querySelector('.indicator-dot').className = "w-4 h-4 shrink-0 rounded-full bg-blue-500 indicator-dot shadow-[0_0_10px_rgba(59,130,246,0.5)]"; 
+                bA.querySelector('.indicator-dot').className = "w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-blue-500 indicator-dot shadow-[0_0_15px_rgba(59,130,246,0.6)]"; 
+                bA.querySelector('span').classList.add('text-white'); bA.querySelector('span').classList.remove('text-gray-400');
             } else if(team === 'N' && bN) { 
                 bN.classList.remove('opacity-50'); 
-                bN.querySelector('.indicator-dot').className = "w-4 h-4 shrink-0 rounded-full bg-gray-500 indicator-dot shadow-[0_0_10px_rgba(107,114,128,0.5)]"; 
+                bN.querySelector('.indicator-dot').className = "w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gray-400 indicator-dot shadow-[0_0_15px_rgba(156,163,175,0.6)]"; 
+                bN.querySelector('span').classList.add('text-white'); bN.querySelector('span').classList.remove('text-gray-400');
             } else if(team === 'B' && bB) { 
                 bB.classList.remove('opacity-50'); 
-                bB.querySelector('.indicator-dot').className = "w-4 h-4 shrink-0 rounded-full bg-red-500 indicator-dot shadow-[0_0_10px_rgba(239,68,68,0.5)]"; 
+                bB.querySelector('.indicator-dot').className = "w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-red-500 indicator-dot shadow-[0_0_15px_rgba(239,68,68,0.6)]"; 
+                bB.querySelector('span').classList.add('text-white'); bB.querySelector('span').classList.remove('text-gray-400');
             }
             updatePossessionUI();
             saveLocal();
@@ -504,9 +495,9 @@
             if(!btn || !icon) return;
             if(state.timer.isRunning) {
                 btn.classList.replace('bg-white', 'bg-brand-red'); btn.classList.replace('text-black', 'text-white');
-                btn.style.backgroundColor = '#ef4444'; icon.setAttribute('data-lucide', 'square');
+                icon.setAttribute('data-lucide', 'square');
             } else {
-                btn.style.backgroundColor = 'white'; btn.classList.replace('bg-brand-red', 'bg-white'); btn.classList.replace('text-white', 'text-black');
+                btn.classList.replace('bg-brand-red', 'bg-white'); btn.classList.replace('text-white', 'text-black');
                 icon.setAttribute('data-lucide', 'play');
             }
             lucide.createIcons();
@@ -531,7 +522,7 @@
 
                 if (totalSec % 1 === 0) {
                     updatePossessionUI();
-                    if(totalSec % 5 === 0) saveLocal(); // Backup memori setiap 5 detik agar ringan
+                    if(totalSec % 5 === 0) saveLocal();
                 }
             }
             requestAnimationFrame(timerLoop);
@@ -575,10 +566,9 @@
                 stats: {}
             };
 
-            // Smart Payload Allocation (Termasuk mode twoteams)
-            if(activeRole === 'teama' || activeRole === 'master' || activeRole === 'twoteams') payloadData.stats.teamA = state.teamA;
-            if(activeRole === 'teamb' || activeRole === 'master' || activeRole === 'twoteams') payloadData.stats.teamB = state.teamB;
-            if(activeRole === 'possession' || activeRole === 'master') payloadData.stats.possession = { a: pctA, b: pctB, n: (100 - (pctA + pctB)) };
+            if(['teama', 'master', 'twoteams'].includes(activeRole)) payloadData.stats.teamA = state.teamA;
+            if(['teamb', 'master', 'twoteams'].includes(activeRole)) payloadData.stats.teamB = state.teamB;
+            if(['possession', 'master'].includes(activeRole)) payloadData.stats.possession = { a: pctA, b: pctB, n: (100 - (pctA + pctB)) };
 
             try {
                 await fetch(API_URL, { 
@@ -587,7 +577,7 @@
                 });
                 let log = document.getElementById('log-status');
                 log.classList.remove('hidden'); setTimeout(() => log.classList.add('hidden'), 3000);
-                saveLocal(); // Tandai bahwa data sudah tersimpan aman
+                saveLocal(); 
             } catch(e) { alert("Gagal sinkronisasi data! Silakan periksa koneksi internet Anda."); } 
             finally {
                 btn.disabled = false; btn.innerHTML = `<i data-lucide="cloud-upload" class="w-3.5 h-3.5 shrink-0"></i> <span class="hidden sm:inline">Sync Data</span><span class="sm:hidden">Sync</span>`; lucide.createIcons();
