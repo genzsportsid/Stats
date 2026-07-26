@@ -123,6 +123,12 @@
             </div>
             
             <div class="flex items-center gap-2 sm:gap-4">
+                <!-- DROPDOWN PILIHAN BABAK -->
+                <select id="select-babak" onchange="changeBabak()" class="bg-night border border-brand-green/30 text-brand-green text-[9px] sm:text-[10px] font-black uppercase tracking-widest rounded-lg px-2 py-2 outline-none focus:border-brand-green shadow-[0_0_10px_rgba(0,154,68,0.2)] transition-colors cursor-pointer">
+                    <option value="FT">Full Time</option>
+                    <option value="1">Babak 1</option>
+                    <option value="2">Babak 2</option>
+                </select>
                 <div id="timer-container" class="hidden flex items-center gap-2 bg-night border border-hairline px-2 sm:px-3 py-1.5 rounded-lg">
                     <span id="match-timer" class="text-base sm:text-xl font-black tracking-tighter w-12 sm:w-16 text-center font-mono">00:00</span>
                     <button id="btn-timer" onclick="toggleTimer()" class="stat-btn w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-full bg-white text-black flex items-center justify-center hover:bg-brand-green hover:text-white transition-colors">
@@ -155,6 +161,7 @@
         let matchesData = [];
         let currentMatch = null;
         let activeRole = 'possession';
+        let activeBabak = 'FT'; // Variabel baru pengingat Babak
 
         // URUTAN BARU (Passing diisolasi ke blok atas. Tembakan & Bertahan dipisah)
         const STAT_DEFS = [
@@ -183,7 +190,7 @@
         // FITUR ANTI-DATA LOSS (LOCAL STORAGE)
         // ==============================================
         function saveLocal() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ match: currentMatch, role: activeRole, state: state }));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ match: currentMatch, role: activeRole, babak: activeBabak, state: state }));
         }
 
         function checkLocalSession() {
@@ -194,10 +201,15 @@
             let raw = localStorage.getItem(STORAGE_KEY);
             if(raw) {
                 let data = JSON.parse(raw); currentMatch = data.match; activeRole = data.role; state = data.state;
+                activeBabak = data.babak || 'FT'; // Menarik data memori babak
+                
                 state.timer.isRunning = false;
                 document.getElementById('screen-setup').classList.add('hidden');
                 document.getElementById('screen-tracker').classList.remove('hidden'); document.getElementById('screen-tracker').classList.add('flex');
                 
+                let selBabak = document.getElementById('select-babak');
+                if(selBabak) selBabak.value = activeBabak; // Update UI Dropdown
+
                 buildWorkspace();
                 
                 STAT_DEFS.forEach(k => { updateStatUI('teamA', k.key); updateStatUI('teamB', k.key); });
@@ -213,6 +225,11 @@
 
         function hardReset() {
             if(confirm('Keluar dari terminal? Pastikan Anda sudah Sync Data.')) { localStorage.removeItem(STORAGE_KEY); window.location.reload(); }
+        }
+
+        function changeBabak() {
+            activeBabak = document.getElementById('select-babak').value;
+            saveLocal();
         }
 
         // ==============================================
@@ -621,6 +638,7 @@
 
             let payloadData = {
                 id_match: currentMatch.id_match || currentMatch.ID_Match,
+                babak: activeBabak, // INJEKSI DATA BABAK KE SERVER
                 role: activeRole,
                 tim_kiri: currentMatch.tim_kiri || currentMatch.Tim_Kiri,
                 tim_kanan: currentMatch.tim_kanan || currentMatch.Tim_Kanan,
