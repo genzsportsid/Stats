@@ -125,7 +125,6 @@
             <div class="flex items-center gap-2 sm:gap-4">
                 <!-- DROPDOWN PILIHAN BABAK -->
                 <select id="select-babak" onchange="changeBabak()" class="bg-night border border-brand-green/30 text-brand-green text-[9px] sm:text-[10px] font-black uppercase tracking-widest rounded-lg px-2 py-2 outline-none focus:border-brand-green shadow-[0_0_10px_rgba(0,154,68,0.2)] transition-colors cursor-pointer">
-                    <option value="FT">Full Time</option>
                     <option value="1">Babak 1</option>
                     <option value="2">Babak 2</option>
                 </select>
@@ -161,7 +160,7 @@
         let matchesData = [];
         let currentMatch = null;
         let activeRole = 'possession';
-        let activeBabak = 'FT'; // Variabel baru pengingat Babak
+        let activeBabak = '1'; // Default selalu Babak 1
 
         // URUTAN BARU (Passing diisolasi ke blok atas. Tembakan & Bertahan dipisah)
         const STAT_DEFS = [
@@ -180,17 +179,29 @@
             return { goals: 0, shotsOn: 0, shotsOff: 0, corners: 0, offsides: 0, yellowCards: 0, redCards: 0, fouls: 0, saves: 0, passSuccess: 0, passFail: 0 };
         }
 
-        let state = {
-            teamA: createEmptyStats(), teamB: createEmptyStats(),
-            possession: { active: 'N', timeA_ms: 0, timeB_ms: 0, timeN_ms: 0 },
-            timer: { isRunning: false, totalMs: 0, lastTick: 0 }
+        // Laci memori kosong (Template)
+        function createDefaultState() {
+            return {
+                teamA: createEmptyStats(), teamB: createEmptyStats(),
+                possession: { active: 'N', timeA_ms: 0, timeB_ms: 0, timeN_ms: 0 },
+                timer: { isRunning: false, totalMs: 0, lastTick: 0 }
+            };
+        }
+
+        // KABINET MEMORI: Menyimpan Laci Babak 1 & Laci Babak 2 secara terpisah
+        let allStates = {
+            '1': createDefaultState(),
+            '2': createDefaultState()
         };
+        // State saat ini menunjuk ke laci yang sedang aktif
+        let state = allStates[activeBabak];
 
         // ==============================================
         // FITUR ANTI-DATA LOSS (LOCAL STORAGE)
         // ==============================================
         function saveLocal() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ match: currentMatch, role: activeRole, babak: activeBabak, state: state }));
+            allStates[activeBabak] = state; // Kunci data sebelum disave
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ match: currentMatch, role: activeRole, babak: activeBabak, allStates: allStates }));
         }
 
         function checkLocalSession() {
@@ -200,22 +211,27 @@
         function resumeSession() {
             let raw = localStorage.getItem(STORAGE_KEY);
             if(raw) {
-                let data = JSON.parse(raw); currentMatch = data.match; activeRole = data.role; state = data.state;
-                activeBabak = data.babak || 'FT'; // Menarik data memori babak
+                let data = JSON.parse(raw); currentMatch = data.match; activeRole = data.role;
+                activeBabak = data.babak || '1';
                 
+                // Ambil seluruh laci memori
+                if (data.allStates) {
+                    allStates = data.allStates;
+                } else if (data.state) { // Fallback jika pakai versi kode lama
+                    allStates['1'] = data.state; 
+                }
+                
+                state = allStates[activeBabak];
                 state.timer.isRunning = false;
+                
                 document.getElementById('screen-setup').classList.add('hidden');
                 document.getElementById('screen-tracker').classList.remove('hidden'); document.getElementById('screen-tracker').classList.add('flex');
                 
                 let selBabak = document.getElementById('select-babak');
-                if(selBabak) selBabak.value = activeBabak; // Update UI Dropdown
+                if(selBabak) selBabak.value = activeBabak;
 
                 buildWorkspace();
-                
-                STAT_DEFS.forEach(k => { updateStatUI('teamA', k.key); updateStatUI('teamB', k.key); });
-                updateStatUI('teamA', 'passSuccess'); updateStatUI('teamA', 'passFail');
-                updateStatUI('teamB', 'passSuccess'); updateStatUI('teamB', 'passFail');
-                setPossession(state.possession.active);
+                refreshUIfromState();
             }
         }
 
@@ -227,34 +243,34 @@
             if(confirm('Keluar dari terminal? Pastikan Anda sudah Sync Data.')) { localStorage.removeItem(STORAGE_KEY); window.location.reload(); }
         }
 
+        // MESIN SAKELAR LACI MEMORI BABAK
         function changeBabak() {
+            if (state.timer.isRunning) toggleTimer(); // Jeda waktu sebelum pindah
+            
+            allStates[activeBabak] = state; // Simpan angka-angka di babak saat ini
             activeBabak = document.getElementById('select-babak').value;
+            
+            // Cek apakah laci tujuan masih kosong, jika iya buatkan form 0 baru
+            if (!allStates[activeBabak]) allStates[activeBabak] = createDefaultState();
+            
+            state = allStates[activeBabak]; // Pindahkan fokus sistem ke babak tujuan
             saveLocal();
+            
+            buildWorkspace();
+            refreshUIfromState();
         }
 
-        // ==============================================
-        // INISIALISASI & SETUP
-        // ==============================================
-        async function fetchMatches() {
-            checkLocalSession();
-            document.getElementById('loading-setup').classList.remove('hidden');
-            let select = document.getElementById('select-match');
-            try {
-                let res = await fetch(API_URL + "?sheet=Jadwal"); matchesData = await res.json();
-                select.innerHTML = '<option value="">-- Pilih Pertandingan --</option>';
-                matchesData.forEach(m => { let idm = m.id_match || m.ID_Match; if(idm) select.innerHTML += `<option value="${idm}">${m.tim_kiri || m.Tim_Kiri} VS ${m.tim_kanan || m.Tim_Kanan} (${idm})</option>`; });
-            } catch(e) { select.innerHTML = '<option value="">Gagal Memuat. Cek Koneksi.</option>'; } 
-            finally { document.getElementById('loading-setup').classList.add('hidden'); }
-        }
-
-        function updateSetupTeams() {
-            let id = document.getElementById('select-match').value; let m = matchesData.find(x => String(x.id_match||x.ID_Match) === id);
-            if(m) {
-                document.getElementById('label-role-a').innerText = `🛡️ ${(m.tim_kiri||m.Tim_Kiri)}`;
-                document.getElementById('label-role-b').innerText = `⚔️ ${(m.tim_kanan||m.Tim_Kanan)}`;
-            } else {
-                document.getElementById('label-role-a').innerText = `🛡️ Tim Kiri`; document.getElementById('label-role-b').innerText = `⚔️ Tim Kanan`;
-            }
+        function refreshUIfromState() {
+            STAT_DEFS.forEach(k => { updateStatUI('teamA', k.key); updateStatUI('teamB', k.key); });
+            updateStatUI('teamA', 'passSuccess'); updateStatUI('teamA', 'passFail');
+            updateStatUI('teamB', 'passSuccess'); updateStatUI('teamB', 'passFail');
+            setPossession(state.possession.active);
+            
+            let curMin = Math.floor(state.timer.totalMs / 60000).toString().padStart(2, '0');
+            let curSec = Math.floor((state.timer.totalMs % 60000) / 1000).toString().padStart(2, '0');
+            let tm = document.getElementById('match-timer');
+            if(tm) tm.innerText = `${curMin}:${curSec}`;
+            renderTimerToggleButton();
         }
 
         function startSession() {
@@ -262,15 +278,21 @@
             if(!id) return alert("Pilih Laga terlebih dahulu!");
             
             currentMatch = matchesData.find(x => String(x.id_match||x.ID_Match) === id); activeRole = roleOpt.value;
-            state = { teamA: createEmptyStats(), teamB: createEmptyStats(), possession: { active: 'N', timeA_ms: 0, timeB_ms: 0, timeN_ms: 0 }, timer: { isRunning: false, totalMs: 0, lastTick: 0 } };
+            
+            // Reset Laci menjadi 0 semua saat sesi match baru dimulai
+            allStates = { '1': createDefaultState(), '2': createDefaultState() };
+            let selBabak = document.getElementById('select-babak');
+            activeBabak = selBabak ? selBabak.value : '1';
+            state = allStates[activeBabak];
             
             saveLocal();
             document.getElementById('screen-setup').classList.add('hidden');
             document.getElementById('screen-tracker').classList.remove('hidden'); document.getElementById('screen-tracker').classList.add('flex');
 
             buildWorkspace();
+            refreshUIfromState();
         }
-
+        
         // ==============================================
         // BUILD WORKSPACE (H2H UX & ISOLASI PASSING)
         // ==============================================
