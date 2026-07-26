@@ -677,9 +677,7 @@
             btn.disabled = true;
             btn.innerHTML = `<div class="w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>`;
 
-            let p = state.possession; let total = p.timeA_ms + p.timeB_ms + p.timeN_ms;
-            let pctA = total > 0 ? Math.round((p.timeA_ms / total) * 100) : 50;
-            let pctB = total > 0 ? Math.round((p.timeB_ms / total) * 100) : 50;
+            let p = state.possession; // <--- AMBIL DATA WAKTU MURNI (MS)
 
             let payloadData = {
                 id_match: currentMatch.id_match || currentMatch.ID_Match,
@@ -692,7 +690,11 @@
 
             if(['teama', 'master', 'twoteams'].includes(activeRole)) payloadData.stats.teamA = state.teamA;
             if(['teamb', 'master', 'twoteams'].includes(activeRole)) payloadData.stats.teamB = state.teamB;
-            if(['possession', 'master'].includes(activeRole)) payloadData.stats.possession = { a: pctA, b: pctB, n: (100 - (pctA + pctB)) };
+            
+            // INJEKSI FIFA STANDARD: Kirim Waktu Murni (Bukan Persentase) ke Database
+            if(['possession', 'master'].includes(activeRole)) {
+                payloadData.stats.possession = { a: p.timeA_ms, b: p.timeB_ms, n: p.timeN_ms };
+            }
 
             try {
                 await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'submit_stat_match', payload: payloadData }) });
@@ -704,7 +706,7 @@
                 btn.disabled = false; btn.innerHTML = `<i data-lucide="cloud-upload" class="w-3.5 h-3.5 shrink-0"></i> <span class="hidden sm:inline">Sync Data</span><span class="sm:hidden">Sync</span>`; lucide.createIcons();
             }
         }
-
+        
         window.onload = fetchMatches;
     </script>
 </body>
