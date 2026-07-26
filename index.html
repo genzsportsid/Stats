@@ -34,6 +34,7 @@
 </head>
 <body class="min-h-screen flex flex-col">
 
+    <!-- LAYAR PERTAMA: SETUP TERMINAL -->
     <div id="screen-setup" class="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 max-w-lg mx-auto w-full">
         <div class="mb-6 text-center">
             <h1 class="text-2xl sm:text-3xl font-black uppercase tracking-widest text-brand-green flex items-center justify-center gap-2">
@@ -114,6 +115,46 @@
         </div>
     </div>
 
+    <!-- LAYAR KEDUA: WORKSPACE TRACKER -->
+    <div id="screen-tracker" class="hidden flex-1 flex flex-col h-screen overflow-hidden">
+        
+        <header class="bg-panel border-b border-hairline p-3 md:p-4 flex items-center justify-between shrink-0 z-20 shadow-md">
+            <div class="flex flex-col max-w-[40%]">
+                <span id="hdr-match-id" class="text-[9px] font-bold text-gray-500 uppercase tracking-widest truncate">MATCH</span>
+                <span id="hdr-role" class="text-[10px] sm:text-[11px] font-black text-brand-gold uppercase tracking-wider truncate">ROLE</span>
+            </div>
+            
+            <div class="flex items-center gap-2 sm:gap-4">
+                <!-- DROPDOWN PILIHAN BABAK -->
+                <select id="select-babak" onchange="changeBabak()" class="bg-night border border-brand-green/30 text-brand-green text-[9px] sm:text-[10px] font-black uppercase tracking-widest rounded-lg px-2 py-2 outline-none focus:border-brand-green shadow-[0_0_10px_rgba(0,154,68,0.2)] transition-colors cursor-pointer">
+                    <option value="1">Babak 1</option>
+                    <option value="2">Babak 2</option>
+                </select>
+
+                <div id="timer-container" class="hidden flex items-center gap-2 bg-night border border-hairline px-2 sm:px-3 py-1.5 rounded-lg">
+                    <span id="match-timer" class="text-base sm:text-xl font-black tracking-tighter w-12 sm:w-16 text-center font-mono">00:00</span>
+                    <button id="btn-timer" onclick="toggleTimer()" class="stat-btn w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-full bg-white text-black flex items-center justify-center hover:bg-brand-green hover:text-white transition-colors">
+                        <i data-lucide="play" id="icon-timer" class="w-3 h-3 sm:w-4 sm:h-4 ml-0.5"></i>
+                    </button>
+                </div>
+                
+                <button onclick="submitStatsToDB()" id="btn-sync" class="stat-btn bg-brand-green/20 text-brand-green border border-brand-green/50 px-3 py-2 rounded-lg text-[9px] sm:text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 hover:bg-brand-green hover:text-white transition-colors">
+                    <i data-lucide="cloud-upload" class="w-3.5 h-3.5 shrink-0"></i> <span class="hidden sm:inline">Sync Data</span><span class="sm:hidden">Sync</span>
+                </button>
+                <button onclick="hardReset()" class="stat-btn bg-red-500/10 text-red-500 border border-red-500/30 px-2.5 py-2 rounded-lg hover:bg-red-500 hover:text-white transition-colors" title="Keluar & Hapus Sesi">
+                    <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                </button>
+            </div>
+        </header>
+
+        <div id="workspace-container" class="flex-1 overflow-y-auto p-2 sm:p-4 md:p-6 bg-night"></div>
+        
+        <div id="log-status" class="bg-brand-green text-white text-center text-[10px] sm:text-xs font-bold uppercase tracking-widest p-2 hidden shadow-[0_-5px_15px_rgba(0,154,68,0.3)] z-50">
+            Data Berhasil Diunggah!
+        </div>
+    </div>
+
+    <!-- SCRIPT MESIN LOGIKA -->
     <script>
         lucide.createIcons();
         const API_URL = "https://script.google.com/macros/s/AKfycbzAeXyhA-VIDTJQfmOnPfv0o9NZQXJg9PIk1r1FpSWeqH3TvInjK6QnhONhLieHiqY/exec";
@@ -122,9 +163,9 @@
         let matchesData = [];
         let currentMatch = null;
         let activeRole = 'possession';
-        let activeBabak = '1'; // Default selalu Babak 1
+        let activeBabak = '1';
+        let isTimerLoopRunning = false;
 
-        // URUTAN BARU (Passing diisolasi ke blok atas. Tembakan & Bertahan dipisah)
         const STAT_DEFS = [
             { key: 'goals',       label: 'Gol', emoji: '⚽' },
             { key: 'shotsOn',     label: 'Tepat Sasaran', emoji: '🎯' },
@@ -141,7 +182,6 @@
             return { goals: 0, shotsOn: 0, shotsOff: 0, corners: 0, offsides: 0, yellowCards: 0, redCards: 0, fouls: 0, saves: 0, passSuccess: 0, passFail: 0 };
         }
 
-        // Laci memori kosong (Template)
         function createDefaultState() {
             return {
                 teamA: createEmptyStats(), teamB: createEmptyStats(),
@@ -150,19 +190,14 @@
             };
         }
 
-        // KABINET MEMORI: Menyimpan Laci Babak 1 & Laci Babak 2 secara terpisah
-        let allStates = {
-            '1': createDefaultState(),
-            '2': createDefaultState()
-        };
-        // State saat ini menunjuk ke laci yang sedang aktif
+        let allStates = { '1': createDefaultState(), '2': createDefaultState() };
         let state = allStates[activeBabak];
 
         // ==============================================
         // FITUR ANTI-DATA LOSS (LOCAL STORAGE)
         // ==============================================
         function saveLocal() {
-            allStates[activeBabak] = state; // Kunci data sebelum disave
+            allStates[activeBabak] = state;
             localStorage.setItem(STORAGE_KEY, JSON.stringify({ match: currentMatch, role: activeRole, babak: activeBabak, allStates: allStates }));
         }
 
@@ -173,13 +208,14 @@
         function resumeSession() {
             let raw = localStorage.getItem(STORAGE_KEY);
             if(raw) {
-                let data = JSON.parse(raw); currentMatch = data.match; activeRole = data.role;
+                let data = JSON.parse(raw); 
+                currentMatch = data.match; 
+                activeRole = data.role;
                 activeBabak = data.babak || '1';
                 
-                // Ambil seluruh laci memori
                 if (data.allStates) {
                     allStates = data.allStates;
-                } else if (data.state) { // Fallback jika pakai versi kode lama
+                } else if (data.state) { 
                     allStates['1'] = data.state; 
                 }
                 
@@ -187,13 +223,19 @@
                 state.timer.isRunning = false;
                 
                 document.getElementById('screen-setup').classList.add('hidden');
-                document.getElementById('screen-tracker').classList.remove('hidden'); document.getElementById('screen-tracker').classList.add('flex');
+                document.getElementById('screen-tracker').classList.remove('hidden'); 
+                document.getElementById('screen-tracker').classList.add('flex');
                 
                 let selBabak = document.getElementById('select-babak');
                 if(selBabak) selBabak.value = activeBabak;
 
                 buildWorkspace();
                 refreshUIfromState();
+
+                if(!isTimerLoopRunning) {
+                    requestAnimationFrame(timerLoop);
+                    isTimerLoopRunning = true;
+                }
             }
         }
 
@@ -205,25 +247,23 @@
             if(confirm('Keluar dari terminal? Pastikan Anda sudah Sync Data.')) { localStorage.removeItem(STORAGE_KEY); window.location.reload(); }
         }
 
-        // MESIN SAKELAR LACI MEMORI BABAK
         function changeBabak() {
-            if (state.timer.isRunning) toggleTimer(); // Jeda waktu sebelum pindah
+            if (state.timer.isRunning) toggleTimer(); 
             
-            allStates[activeBabak] = state; // Simpan angka-angka di babak saat ini
+            allStates[activeBabak] = state; 
             activeBabak = document.getElementById('select-babak').value;
             
-            // Cek apakah laci tujuan masih kosong, jika iya buatkan form 0 baru
             if (!allStates[activeBabak]) allStates[activeBabak] = createDefaultState();
             
-            state = allStates[activeBabak]; // Pindahkan fokus sistem ke babak tujuan
+            state = allStates[activeBabak]; 
             saveLocal();
             
             buildWorkspace();
             refreshUIfromState();
         }
-        
+
         // ==============================================
-        // INISIALISASI & SETUP (FUNGSI YANG KEMBALI)
+        // INISIALISASI & SETUP
         // ==============================================
         async function fetchMatches() {
             checkLocalSession();
@@ -246,7 +286,32 @@
                 document.getElementById('label-role-a').innerText = `🛡️ Tim Kiri`; document.getElementById('label-role-b').innerText = `⚔️ Tim Kanan`;
             }
         }
-        
+
+        function startSession() {
+            let id = document.getElementById('select-match').value; let roleOpt = document.querySelector('input[name="role"]:checked');
+            if(!id) return alert("Pilih Laga terlebih dahulu!");
+            
+            currentMatch = matchesData.find(x => String(x.id_match||x.ID_Match) === id); activeRole = roleOpt.value;
+            
+            allStates = { '1': createDefaultState(), '2': createDefaultState() };
+            let selBabak = document.getElementById('select-babak');
+            activeBabak = selBabak ? selBabak.value : '1';
+            state = allStates[activeBabak];
+            
+            saveLocal();
+            document.getElementById('screen-setup').classList.add('hidden');
+            document.getElementById('screen-tracker').classList.remove('hidden'); 
+            document.getElementById('screen-tracker').classList.add('flex');
+
+            buildWorkspace();
+            refreshUIfromState();
+
+            if(!isTimerLoopRunning) {
+                requestAnimationFrame(timerLoop);
+                isTimerLoopRunning = true;
+            }
+        }
+
         function refreshUIfromState() {
             STAT_DEFS.forEach(k => { updateStatUI('teamA', k.key); updateStatUI('teamB', k.key); });
             updateStatUI('teamA', 'passSuccess'); updateStatUI('teamA', 'passFail');
@@ -260,26 +325,6 @@
             renderTimerToggleButton();
         }
 
-        function startSession() {
-            let id = document.getElementById('select-match').value; let roleOpt = document.querySelector('input[name="role"]:checked');
-            if(!id) return alert("Pilih Laga terlebih dahulu!");
-            
-            currentMatch = matchesData.find(x => String(x.id_match||x.ID_Match) === id); activeRole = roleOpt.value;
-            
-            // Reset Laci menjadi 0 semua saat sesi match baru dimulai
-            allStates = { '1': createDefaultState(), '2': createDefaultState() };
-            let selBabak = document.getElementById('select-babak');
-            activeBabak = selBabak ? selBabak.value : '1';
-            state = allStates[activeBabak];
-            
-            saveLocal();
-            document.getElementById('screen-setup').classList.add('hidden');
-            document.getElementById('screen-tracker').classList.remove('hidden'); document.getElementById('screen-tracker').classList.add('flex');
-
-            buildWorkspace();
-            refreshUIfromState();
-        }
-        
         // ==============================================
         // BUILD WORKSPACE (H2H UX & ISOLASI PASSING)
         // ==============================================
@@ -290,7 +335,6 @@
             let wg = document.getElementById('workspace-container'); wg.innerHTML = ''; 
             let tBtn = document.getElementById('timer-container'); tBtn.classList.add('hidden');
 
-            // --- KOMPONEN: POSSESSION PANEL ---
             const renderPossessionPanel = () => {
                 return `
                 <div class="bg-panel border border-hairline rounded-2xl overflow-hidden shadow-lg w-full max-w-4xl mx-auto mb-6">
@@ -326,7 +370,6 @@
                 </div>`;
             };
 
-            // --- KOMPONEN: BLOK UMPAN TERISOLASI (SINGLE) ---
             const renderSinglePassingBlock = (teamKey, colorClass, btnBgClass, btnShadowClass) => {
                 return `
                 <div class="bg-night border border-hairline p-3 sm:p-4 rounded-2xl mb-5 shadow-inner relative overflow-hidden">
@@ -359,7 +402,6 @@
                 </div>`;
             };
 
-            // --- KOMPONEN: SINGLE TEAM PANEL ---
             const renderSinglePanel = (teamKey, teamName, colorClass, bgClass, btnBgClass, btnShadowClass) => {
                 let html = `<div class="bg-panel border border-hairline rounded-2xl overflow-hidden shadow-lg w-full max-w-md mx-auto mb-6">
                     <div class="${bgClass} border-b border-hairline p-3 sm:p-4 text-center">
@@ -367,7 +409,6 @@
                     </div>
                     <div class="p-3 sm:p-4">`;
                 
-                // INJEKSI PASSING (SUPER PRIORITAS)
                 html += renderSinglePassingBlock(teamKey, colorClass, btnBgClass, btnShadowClass);
 
                 html += `<div class="space-y-2.5">`;
@@ -391,7 +432,6 @@
                 return html;
             };
 
-            // --- KOMPONEN: BLOK UMPAN TERISOLASI (H2H UNIFIED) ---
             const renderUnifiedPassingBlock = () => {
                 return `
                 <div class="bg-night border border-hairline rounded-2xl p-3 sm:p-4 mb-5 shadow-inner relative overflow-hidden">
@@ -442,7 +482,6 @@
                 </div>`;
             };
 
-            // --- KOMPONEN: H2H UNIFIED PANEL (Untuk 2 Tim / Master) ---
             const renderUnifiedPanel = () => {
                 let html = `<div class="bg-panel border border-hairline rounded-2xl overflow-hidden shadow-lg w-full max-w-4xl mx-auto mb-6">
                     <div class="flex justify-between items-center bg-gray-800/20 border-b border-hairline p-3 sm:p-4">
@@ -452,7 +491,6 @@
                     </div>
                     <div class="p-2 sm:p-4">`;
                 
-                // INJEKSI PASSING (SUPER PRIORITAS)
                 html += renderUnifiedPassingBlock();
 
                 html += `<div class="space-y-2">`;
@@ -481,7 +519,6 @@
                 return html;
             };
 
-            // RENDER BERDASARKAN ROLE
             if(activeRole === 'teama') {
                 document.getElementById('hdr-role').innerText = "🛡️ OPR. " + tA;
                 wg.innerHTML = renderSinglePanel('teamA', tA, 'text-blue-400', 'bg-blue-900/20', 'bg-blue-600', 'rgba(37,99,235,0.4)');
@@ -506,7 +543,6 @@
             }
 
             lucide.createIcons();
-            requestAnimationFrame(timerLoop);
             
             let curMin = Math.floor(state.timer.totalMs / 60000).toString().padStart(2, '0');
             let curSec = Math.floor((state.timer.totalMs % 60000) / 1000).toString().padStart(2, '0');
@@ -587,7 +623,7 @@
                 btn.classList.replace('bg-brand-red', 'bg-white'); btn.classList.replace('text-white', 'text-black');
                 icon.setAttribute('data-lucide', 'play');
             }
-            lucide.createIcons();
+            lucide.createIcons({ nameAttr: 'data-lucide' });
         }
 
         function timerLoop(now) {
@@ -647,7 +683,7 @@
 
             let payloadData = {
                 id_match: currentMatch.id_match || currentMatch.ID_Match,
-                babak: activeBabak, // INJEKSI DATA BABAK KE SERVER
+                babak: activeBabak, 
                 role: activeRole,
                 tim_kiri: currentMatch.tim_kiri || currentMatch.Tim_Kiri,
                 tim_kanan: currentMatch.tim_kanan || currentMatch.Tim_Kanan,
