@@ -114,44 +114,6 @@
         </div>
     </div>
 
-    <div id="screen-tracker" class="hidden flex-1 flex flex-col h-screen overflow-hidden">
-        
-        <header class="bg-panel border-b border-hairline p-3 md:p-4 flex items-center justify-between shrink-0 z-20 shadow-md">
-            <div class="flex flex-col max-w-[40%]">
-                <span id="hdr-match-id" class="text-[9px] font-bold text-gray-500 uppercase tracking-widest truncate">MATCH</span>
-                <span id="hdr-role" class="text-[10px] sm:text-[11px] font-black text-brand-gold uppercase tracking-wider truncate">ROLE</span>
-            </div>
-            
-            <div class="flex items-center gap-2 sm:gap-4">
-                <!-- DROPDOWN PILIHAN BABAK -->
-                <select id="select-babak" onchange="changeBabak()" class="bg-night border border-brand-green/30 text-brand-green text-[9px] sm:text-[10px] font-black uppercase tracking-widest rounded-lg px-2 py-2 outline-none focus:border-brand-green shadow-[0_0_10px_rgba(0,154,68,0.2)] transition-colors cursor-pointer">
-                    <option value="1">Babak 1</option>
-                    <option value="2">Babak 2</option>
-                </select>
-                <div id="timer-container" class="hidden flex items-center gap-2 bg-night border border-hairline px-2 sm:px-3 py-1.5 rounded-lg">
-                    <span id="match-timer" class="text-base sm:text-xl font-black tracking-tighter w-12 sm:w-16 text-center font-mono">00:00</span>
-                    <button id="btn-timer" onclick="toggleTimer()" class="stat-btn w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-full bg-white text-black flex items-center justify-center hover:bg-brand-green hover:text-white transition-colors">
-                        <i data-lucide="play" id="icon-timer" class="w-3 h-3 sm:w-4 sm:h-4 ml-0.5"></i>
-                    </button>
-                </div>
-                
-                <button onclick="submitStatsToDB()" id="btn-sync" class="stat-btn bg-brand-green/20 text-brand-green border border-brand-green/50 px-3 py-2 rounded-lg text-[9px] sm:text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 hover:bg-brand-green hover:text-white transition-colors">
-                    <i data-lucide="cloud-upload" class="w-3.5 h-3.5 shrink-0"></i> <span class="hidden sm:inline">Sync Data</span><span class="sm:hidden">Sync</span>
-                </button>
-                <button onclick="hardReset()" class="stat-btn bg-red-500/10 text-red-500 border border-red-500/30 px-2.5 py-2 rounded-lg hover:bg-red-500 hover:text-white transition-colors" title="Keluar & Hapus Sesi">
-                    <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
-                </button>
-            </div>
-        </header>
-
-        <div id="workspace-container" class="flex-1 overflow-y-auto p-2 sm:p-4 md:p-6 bg-night">
-            </div>
-        
-        <div id="log-status" class="bg-brand-green text-white text-center text-[10px] sm:text-xs font-bold uppercase tracking-widest p-2 hidden shadow-[0_-5px_15px_rgba(0,154,68,0.3)] z-50">
-            Data Berhasil Diunggah!
-        </div>
-    </div>
-
     <script>
         lucide.createIcons();
         const API_URL = "https://script.google.com/macros/s/AKfycbzAeXyhA-VIDTJQfmOnPfv0o9NZQXJg9PIk1r1FpSWeqH3TvInjK6QnhONhLieHiqY/exec";
@@ -259,7 +221,32 @@
             buildWorkspace();
             refreshUIfromState();
         }
+        
+        // ==============================================
+        // INISIALISASI & SETUP (FUNGSI YANG KEMBALI)
+        // ==============================================
+        async function fetchMatches() {
+            checkLocalSession();
+            document.getElementById('loading-setup').classList.remove('hidden');
+            let select = document.getElementById('select-match');
+            try {
+                let res = await fetch(API_URL + "?sheet=Jadwal"); matchesData = await res.json();
+                select.innerHTML = '<option value="">-- Pilih Pertandingan --</option>';
+                matchesData.forEach(m => { let idm = m.id_match || m.ID_Match; if(idm) select.innerHTML += `<option value="${idm}">${m.tim_kiri || m.Tim_Kiri} VS ${m.tim_kanan || m.Tim_Kanan} (${idm})</option>`; });
+            } catch(e) { select.innerHTML = '<option value="">Gagal Memuat. Cek Koneksi.</option>'; } 
+            finally { document.getElementById('loading-setup').classList.add('hidden'); }
+        }
 
+        function updateSetupTeams() {
+            let id = document.getElementById('select-match').value; let m = matchesData.find(x => String(x.id_match||x.ID_Match) === id);
+            if(m) {
+                document.getElementById('label-role-a').innerText = `🛡️ ${(m.tim_kiri||m.Tim_Kiri)}`;
+                document.getElementById('label-role-b').innerText = `⚔️ ${(m.tim_kanan||m.Tim_Kanan)}`;
+            } else {
+                document.getElementById('label-role-a').innerText = `🛡️ Tim Kiri`; document.getElementById('label-role-b').innerText = `⚔️ Tim Kanan`;
+            }
+        }
+        
         function refreshUIfromState() {
             STAT_DEFS.forEach(k => { updateStatUI('teamA', k.key); updateStatUI('teamB', k.key); });
             updateStatUI('teamA', 'passSuccess'); updateStatUI('teamA', 'passFail');
